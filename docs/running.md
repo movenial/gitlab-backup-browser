@@ -28,7 +28,7 @@ The service:
   edit `--backups` for another directory, or give a backup path to open one
   at start);
 - keeps its index, issues and unbundled repositories in `/var/lib/gbb`
-  (created by systemd);
+  (created by systemd, readable by the service user only);
 - extracts attachments and the LFS files of default branches (`--lfs=head
   --uploads`; drop them to save space);
 - is sandboxed: read-only system and backups, writes only to `/var/lib/gbb`,
@@ -58,7 +58,9 @@ Traefik), keep `--listen 127.0.0.1:8080`: on the loopback, the action buttons
 work and the proxy can add TLS and its own login. The proxy must pass the
 original `Host` header (Caddy does; with nginx add
 `proxy_set_header Host $host;`), since action buttons check that requests come
-from the same site.
+from the same site. Without `--auth`, add `--host gbb.example.com` (the name
+in the browser's address bar) to `ExecStart`: gbb refuses host names it was
+not told about.
 
 ### The nightly check
 

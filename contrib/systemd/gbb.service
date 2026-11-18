@@ -12,12 +12,15 @@ User=git
 Group=git
 # Login for the web UI (needed to allow the action buttons on the network):
 #   echo 'GBB_AUTH=admin:a-long-password' > /etc/gbb/env && chmod 600 /etc/gbb/env
+# Without a login, gbb answers to IP addresses only: add --host NAME below to
+# open it as http://NAME:8080.
 EnvironmentFile=-/etc/gbb/env
 ExecStart=/usr/local/bin/gbb serve --listen :8080 \
   --backups /var/opt/gitlab/backups \
   --data /var/lib/gbb \
   --lfs=head --uploads
 StateDirectory=gbb
+StateDirectoryMode=0700
 Restart=on-failure
 RestartSec=10s
 

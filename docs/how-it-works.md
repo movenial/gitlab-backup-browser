@@ -152,7 +152,14 @@ in about 2 s with a ~70 MB peak.
   `--auth user:password` (or `GBB_AUTH`), otherwise anyone on the network can
   read every repository, private ones included. git asks for the same login
   when cloning. Basic auth travels in clear text over plain HTTP: put a TLS
-  reverse proxy in front on untrusted networks.
+  reverse proxy in front on untrusted networks. Failed logins are not
+  limited: use a long password, or let the proxy limit them.
+- Without `--auth`, only requests addressed to an IP address, `localhost` or
+  a `--host` name are answered, so a web page cannot read the backup through
+  a visitor's browser by pointing its own domain at gbb (DNS rebinding).
+- The cache of each backup is a directory only its owner can enter (mode
+  `0700`): other users of the machine cannot read the unbundled repositories,
+  issues or attachments.
 - Repository content is untrusted: raw files are served with a sandboxing
   Content-Security-Policy, READMEs and comments are rendered with raw HTML
   escaped, and Git LFS pointers are never served as the file they stand for.

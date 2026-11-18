@@ -130,6 +130,11 @@ func serve(args []string) error {
 	fs.Var(lfs, "lfs", "extract lfs.tar.gz once to show Git LFS files and serve them to git-lfs: --lfs for all objects (about the archive's size on disk), --lfs=head for the files of each project's default branch only")
 	uploads := fs.Bool("uploads", false, "extract uploads.tar.gz once to show images and attachments of issues and merge requests")
 	auth := fs.String("auth", "", `require a login, as "user:password" (or set GBB_AUTH)`)
+	var hosts []string
+	fs.Func("host", "host name this server is reached by, besides IP addresses and localhost (repeatable; not needed with --auth)", func(v string) error {
+		hosts = append(hosts, v)
+		return nil
+	})
 	memLimit := fs.Int("memory-limit", defaultMemLimitMiB, "soft memory limit in MiB, 128 on Android, 256 elsewhere; the garbage collector works harder near it (0 = none)")
 	maxOpen := fs.Int("max-open-repos", 6, "repositories kept open at once; others are closed and their memory released")
 	cacheMB := fs.Int("cache", 24, "shared object cache in MiB, for all repositories together")
@@ -179,7 +184,9 @@ the current directory) and opens the one you pick.`)
 	// Buttons that change things (open a backup, extract, delete caches)
 	// need a login once the server is reachable from the network.
 	srv.ActionsAllowed = *auth != "" || addr.IP.IsLoopback()
-	var handler http.Handler = srv
+	// Without a login, only known host names are served (DNS rebinding);
+	// with one, a page under another name has no credentials to send.
+	handler := web.AllowHosts(srv, hosts)
 	if *auth != "" {
 		c, err := web.ParseCredentials(*auth)
 		if err != nil {
@@ -198,7 +205,8 @@ the current directory) and opens the one you pick.`)
 	if *auth == "" && !addr.IP.IsLoopback() {
 		log.Printf("WARNING: reachable from the network without a login; every repository is readable and action buttons are disabled. Use --auth user:password.")
 	}
-	hs := &http.Server{Handler: logRequests(handler), ReadHeaderTimeout: 10 * time.Second}
+	// No write timeout: a clone of a large repository takes as long as it takes.
+	hs := &http.Server{Handler: logRequests(handler), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 2 * time.Minute}
 	return hs.Serve(ln)
 }
 

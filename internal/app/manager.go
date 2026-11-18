@@ -191,7 +191,14 @@ func (m *Manager) run() {
 	if m.closed.Load() {
 		return
 	}
-	if err := os.MkdirAll(m.root, 0o755); err != nil {
+	// Everything read from the backup (private repositories, issues,
+	// attachments) is written below this directory, so closing it to other
+	// users closes all of it. MkdirAll leaves an existing directory as it is.
+	if err := os.MkdirAll(m.root, 0o700); err != nil {
+		m.fail(err)
+		return
+	}
+	if err := os.Chmod(m.root, 0o700); err != nil {
 		m.fail(err)
 		return
 	}

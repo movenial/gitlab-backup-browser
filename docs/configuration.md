@@ -24,6 +24,7 @@ directory.
 | `--listen ADDR` | `127.0.0.1:8080` | `:8080` to allow other devices |
 | `--backups DIR` | see below | directory where the Backups page looks for archives (repeatable) |
 | `--auth user:password` | none | require a login (or `GBB_AUTH`) |
+| `--host NAME` | none | host name the server is reached by, besides IP addresses and `localhost` (repeatable; not needed with `--auth`) |
 | `--no-issues` | off | skip issues, merge requests and comments |
 | `--lfs`, `--lfs=head` | off | extract `lfs.tar.gz` once to show Git LFS files and serve them to git-lfs: all objects (about the archive's size on disk), or with `head` only the files of each project's default branch |
 | `--uploads` | off | extract `uploads.tar.gz` once to show images and attachments of issues, MRs and comments |
@@ -57,6 +58,16 @@ They are protected by the same login as the rest of the site (`--auth`), and
 use a per-process token plus an origin check against cross-site requests.
 When gbb listens on the network **without** `--auth`, the buttons are
 disabled: anyone on the network can browse, nobody can change anything.
+
+### Host names
+
+Without `--auth`, gbb answers only requests addressed to an IP address, to
+`localhost`, or to a name given with `--host`: `http://192.168.1.20:8080`
+works as it is, `http://nas.lan:8080` needs `--host nas.lan`. Other names get
+a `421` response that says so. This stops a web page from reading the backup
+through the browser of someone who has gbb open, by pointing its own domain
+at gbb's address (DNS rebinding). With `--auth` every name is accepted: such
+a page has no login to send.
 
 ## `verify`
 
