@@ -1,0 +1,41 @@
+# gbb serve as a system service, next to GitLab's backups.
+# Install: see docs/running.md.
+[Unit]
+Description=GitLab backup browser (gbb)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# GitLab writes its backups as git:git, mode 0600: read them as that user
+# (or give a dedicated user read access with an ACL, see the doc).
+User=git
+Group=git
+# Login for the web UI (needed to allow the action buttons on the network):
+#   echo 'GBB_AUTH=admin:a-long-password' > /etc/gbb/env && chmod 600 /etc/gbb/env
+EnvironmentFile=-/etc/gbb/env
+ExecStart=/usr/local/bin/gbb serve --listen :8080 \
+  --backups /var/opt/gitlab/backups \
+  --data /var/lib/gbb \
+  --lfs=head --uploads
+StateDirectory=gbb
+Restart=on-failure
+RestartSec=10s
+
+# gbb only reads the backups and writes to its data directory.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/gbb
+ReadOnlyPaths=/var/opt/gitlab/backups
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+# gbb keeps itself near 256 MiB (--memory-limit); this is a hard ceiling.
+MemoryMax=1G
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot script: starts gbb when the phone boots.
+# Install: see docs/running.md (copy to ~/.termux/boot/ and chmod +x).
+
+# Keep the CPU awake enough for Android not to freeze Termux.
+termux-wake-lock
+
+GBB=$HOME/gbb                        # the gbb-android-arm64 binary
+LOG=$HOME/gbb.log
+# Login for other devices on the network (and to allow the action buttons):
+# export GBB_AUTH=admin:a-long-password
+
+# Restart gbb if it ever stops; keep the log small.
+while true; do
+  [ -f "$LOG" ] && [ "$(wc -c <"$LOG")" -gt 1000000 ] && mv "$LOG" "$LOG.1"
+  "$GBB" serve --listen :8080 --pause-on-battery --lfs=head --uploads \
+    --backups "$HOME/storage/shared/Download" >>"$LOG" 2>&1
+  echo "gbb exited ($?), restarting in 10 s" >>"$LOG"
+  sleep 10
+done

@@ -1,0 +1,26 @@
+#!/bin/sh
+# Verify the newest GitLab backup in $BACKUPS, compared with the one before
+# it, and write Prometheus metrics to $PROM. Exit status: 0 ok, 1 warnings,
+# 2 errors (systemd then marks the unit failed, which you can alert on).
+set -eu
+BACKUPS=${BACKUPS:-/var/opt/gitlab/backups}
+DATA=${DATA:-/var/lib/gbb}
+PROM=${PROM:-}
+
+# Newest first; GitLab names start with the Unix time of the backup.
+set -- $(ls -1 "$BACKUPS"/*_gitlab_backup.tar "$BACKUPS"/*_gitlab_backup.tar.gz 2>/dev/null | sort -r)
+if [ $# -eq 0 ]; then
+  echo "no GitLab backup in $BACKUPS" >&2
+  exit 2
+fi
+latest=$1
+previous=${2:-}
+
+set -- verify --deep --data "$DATA" --max-age 26h
+[ -n "$PROM" ] && set -- "$@" --prom "$PROM"
+[ -n "$previous" ] && set -- "$@" --previous "$previous"
+# Refs rewritten on purpose (bot branches, mirrors): space-separated patterns.
+set -f # the patterns are for gbb, not for the shell
+for p in ${IGNORE_REFS:-}; do set -- "$@" --ignore-refs "$p"; done
+set +f
+exec gbb "$@" "$latest"

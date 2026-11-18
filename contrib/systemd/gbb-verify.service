@@ -1,0 +1,25 @@
+# Checks the newest GitLab backup against the previous one and writes
+# Prometheus metrics for node_exporter's textfile collector.
+# Started by gbb-verify.timer; see docs/running.md.
+[Unit]
+Description=Check the newest GitLab backup (gbb verify)
+
+[Service]
+Type=oneshot
+User=git
+Group=git
+Environment=BACKUPS=/var/opt/gitlab/backups
+Environment=PROM=/var/lib/node_exporter/textfile_collector/gbb.prom
+# Refs rewritten on purpose every day (bot branches, mirrors), not warned about.
+Environment="IGNORE_REFS=renovate/* dependabot/*"
+ExecStart=/usr/local/bin/gbb-verify-latest
+StateDirectory=gbb
+Nice=10
+IOSchedulingClass=idle
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/gbb /var/lib/node_exporter/textfile_collector
+ReadOnlyPaths=/var/opt/gitlab/backups
+ProtectHome=yes
+PrivateTmp=yes
+MemoryMax=1G

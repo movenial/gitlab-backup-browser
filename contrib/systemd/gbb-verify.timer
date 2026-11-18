@@ -1,0 +1,11 @@
+# Nightly check, after GitLab's backup (adjust to your backup cron).
+[Unit]
+Description=Check the newest GitLab backup every night
+
+[Timer]
+OnCalendar=*-*-* 05:30
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
