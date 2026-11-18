@@ -1,0 +1,23 @@
+{{define "snippets.html"}}{{template "top" .}}
+{{with .Data}}{{with .T}}{{template "projtabs" (dict "T" . "Active" "snippets")}}{{end}}
+{{with .D}}
+<section class="hero"><h1>Snippets{{with .Project}} of {{.Name}}{{end}}</h1>
+<p class="muted">{{len .Snippets}} snippet{{if ne (len .Snippets) 1}}s{{end}}{{if not .Project}}, personal and of projects{{end}}.</p></section>
+<ul class="list">
+{{range .Snippets}}
+<li class="row">
+  <span class="avatar">{{initial .Title}}</span>
+  <div class="grow">
+    <a class="title" href="/-/snippets/{{.ID}}">{{.Title}}</a>
+    <div class="sub">${{.ID}}{{with .FileName}} · <span class="mono">{{.}}</span>{{end}} · {{$.Data.D.Users.UserName .Author}} · {{shortTime .Updated}}{{with .Project}} · in <a href="/{{.}}">{{.}}</a>{{end}}</div>
+  </div>
+  <div class="tags">
+    {{if not .Project}}<span class="tag muted">personal</span>{{end}}
+    {{if not .Repo}}<span class="tag warn">not in the backup</span>{{end}}
+    <span class="tag muted">{{.VisibilityName}}</span>
+  </div>
+</li>
+{{else}}<li class="row muted">No snippets.</li>{{end}}
+</ul>
+{{end}}{{end}}
+{{template "bottom" .}}{{end}}

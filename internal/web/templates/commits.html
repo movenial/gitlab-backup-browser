@@ -1,0 +1,14 @@
+{{define "commits.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "repohead" .RepoView}}
+{{if .Path}}<p class="muted">History of <span class="mono">{{.Path}}</span></p>{{end}}
+<ul class="list">
+{{range .Commits}}{{template "commitrow" (dict "C" . "Base" $.Data.T.Base "Browse" true)}}
+{{else}}<li class="row muted">No commits.</li>{{end}}
+</ul>
+<div class="pager">
+  {{if gt .Page 1}}<a class="btn" href="?page={{add .Page -1}}">← Newer</a>{{end}}
+  {{if .More}}<a class="btn" href="?page={{add .Page 1}}">Older →</a>{{end}}
+</div>
+{{end}}
+{{template "bottom" .}}{{end}}

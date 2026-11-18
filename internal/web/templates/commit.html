@@ -1,0 +1,18 @@
+{{define "commit.html"}}{{template "top" .}}
+{{with .Data}}
+{{with .Commit}}
+<section class="commithead">
+  <h1>{{.Subject}}</h1>
+  {{with .Body}}<pre class="body">{{.}}</pre>{{end}}
+  <p class="sub">
+    <b>{{.Author.Name}}</b> authored {{date .Author.When}}
+    {{if ne .Author.Name .Committer.Name}} · committed by {{.Committer.Name}}{{end}}
+  </p>
+  <p class="mono sub">commit {{.Hash}}{{range .Parents}} · parent <a href="/{{$.Data.T.Base}}/-/commit/{{.}}">{{short .}}</a>{{end}}
+  · <a href="/{{$.Data.T.Base}}/-/tree/{{.Hash}}">browse files</a></p>
+</section>
+{{end}}
+<p class="muted">{{len .Files}}{{if .Truncated}}+{{end}} changed file{{if ne (len .Files) 1}}s{{end}}</p>
+{{template "difffiles" .Files}}
+{{end}}
+{{template "bottom" .}}{{end}}

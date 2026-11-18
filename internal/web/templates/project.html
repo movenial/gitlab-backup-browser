@@ -1,0 +1,26 @@
+{{define "project.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero">
+  <h1>{{.T.Name}}</h1>
+  <p class="mono muted">{{.T.Base}}{{if .T.P.Archived}} · <span class="tag">archived</span>{{end}}</p>
+  {{if and .T.P.Description (not .T.IsWiki)}}<p>{{.T.P.Description}}</p>{{end}}
+</section>
+{{template "projtabs" (dict "T" .T "Active" "code")}}
+<div class="clone">
+  <label for="clone" class="muted">Clone</label>
+  <input id="clone" class="mono" readonly value="git clone {{.Clone}}">
+  <button class="btn copy" data-copy="#clone" type="button">Copy</button>
+</div>
+<div class="links">
+  {{if .Bundle}}<a href="/{{.T.Base}}/-/bundle">Download the original bundle</a>{{end}}
+</div>
+{{if .Empty}}
+<div class="notice">The repository is empty or has no branches.</div>
+{{else}}
+{{template "repohead" .RepoView}}
+{{template "lastcommit" .RepoView}}
+{{template "entries" .}}
+{{if .Readme}}<article class="readme">{{.Readme}}</article>{{end}}
+{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

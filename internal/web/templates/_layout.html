@@ -1,0 +1,194 @@
+{{define "top"}}<!doctype html>
+<html lang="en"{{with .Theme}} data-theme="{{.}}"{{end}}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · Backup Browser</title>
+<link rel="stylesheet" href="/-/static/style.css">
+{{with .LabelsCSS}}<link rel="stylesheet" href="{{.}}">{{end}}
+<link rel="icon" href="/-/static/icon.svg" type="image/svg+xml">
+<script src="/-/static/app.js" defer></script>
+</head>
+<body>
+<header class="bar">
+  <a class="brand" href="/"><span class="mark">▤</span> Backup Browser</a>
+  <form class="search" action="/-/search" method="get" role="search">
+    <input type="search" name="q" placeholder="Find a project…" aria-label="Find a project">
+  </form>
+  <nav class="navlinks">
+    <a href="/-/projects"{{if eq .Nav "projects"}} class="on" aria-current="page"{{end}}>Projects</a>
+    <a href="/-/code"{{if eq .Nav "code"}} class="on" aria-current="page"{{end}}>Code search</a>
+  </nav>
+  <details class="topmenu">
+    <summary aria-label="Menu"><span class="burger" aria-hidden="true"></span></summary>
+    <nav class="menu-panel">
+      <a class="narrow{{if eq .Nav "projects"}} on{{end}}" href="/-/projects">Projects</a>
+      <a class="narrow{{if eq .Nav "code"}} on{{end}}" href="/-/code">Code search</a>
+      {{with .Index}}{{if .Snippets}}<a{{if eq $.Nav "snippets"}} class="on"{{end}} href="/-/snippets">Snippets</a>{{end}}{{end}}
+      {{if .Picker}}<a{{if eq .Nav "backups"}} class="on"{{end}} href="/-/backups" title="{{.Backup}}">Backups{{with .Backup}}<span class="menu-sub mono">{{.}}</span>{{end}}</a>{{end}}
+      <a{{if eq .Nav "info"}} class="on"{{end}} href="/-/info">About this backup</a>
+      <a href="/-/theme?back={{urlquery .Here}}" title="Switch between following the system, light and dark">Theme: {{if eq .Theme "light"}}light{{else if eq .Theme "dark"}}dark{{else}}auto{{end}}</a>
+    </nav>
+  </details>
+</header>
+{{if and (or (not .Status.Ready) .Status.Paused .Status.Error) (ne .Title "Loading")}}
+<div class="banner{{if .Status.Error}} bad{{end}}" id="status" data-ready="{{.Status.Ready}}">
+  {{if .Status.Error}}Import failed: {{.Status.Error}}
+  {{else if .Status.Paused}}Paused while on battery — plug in to continue ({{.Status.Phase}}).
+  {{else}}<span class="spin"></span> <span id="status-text">{{.Status.Phase}}{{with .Status.Percent}}{{if ge . 0}} · {{.}}%{{end}}{{end}}</span>
+  — projects appear by hash until the database is read.{{end}}
+</div>
+{{end}}
+<main>
+{{if .Crumbs}}<nav class="crumbs">{{range $i, $c := .Crumbs}}{{if $i}}<span class="sep">/</span>{{end}}<a href="{{$c.URL}}">{{$c.Name}}</a>{{end}}</nav>{{end}}
+{{end}}
+
+{{define "bottom"}}
+</main>
+<footer class="foot">
+  {{with .Index}}<a href="/-/info">{{with .Info.backup_created_at}}Backup of {{.}}{{else}}This backup{{end}}{{with .Info.gitlab_version}} · GitLab {{.}}{{end}}</a> · {{end}}read-only · gitlab-backup-browser {{.Version}}
+</footer>
+</body>
+</html>
+{{end}}
+
+{{define "projrow"}}
+<li class="row">
+  <span class="avatar">{{initial .Name}}</span>
+  <div class="grow">
+    <a class="title" href="/{{.FullPath}}">{{.Name}}</a>
+    <div class="sub mono">{{.FullPath}}</div>
+    {{if .Description}}<div class="desc">{{.Description}}</div>{{end}}
+    {{if .Topics}}<div class="topicline">{{range .Topics}}<a class="topic" href="/-/projects?topic={{.}}"># {{.}}</a>{{end}}</div>{{end}}
+  </div>
+  <div class="tags">
+    {{if .Unmatched}}<span class="tag">unmatched</span>{{end}}
+    {{if eq .Kind "bot"}}<span class="tag">bot</span>{{end}}
+    {{if eq .Kind "personal"}}<span class="tag muted">personal</span>{{end}}
+    {{if .Archived}}<span class="tag">archived</span>{{end}}
+    {{if .PendingDel}}<span class="tag warn">pending deletion</span>{{end}}
+    {{if and (not .Unmatched) (not .Repo)}}<span class="tag muted">no repository</span>{{end}}
+    {{if .Wiki}}<span class="tag">wiki</span>{{end}}
+    {{if not .Unmatched}}<span class="tag muted">{{.VisibilityName}}</span>{{end}}
+    {{if .Size}}<span class="tag muted">{{bytes .Size}}</span>{{end}}
+  </div>
+</li>
+{{end}}
+
+{{define "nsrow"}}
+<li class="row">
+  <span class="avatar group">{{initial .Name}}</span>
+  <div class="grow">
+    <a class="title" href="/{{.FullPath}}">{{.Name}}</a>
+    <div class="sub mono">{{.FullPath}}</div>
+    {{if .Description}}<div class="desc">{{.Description}}</div>{{end}}
+  </div>
+  {{if eq .Kind "user"}}<div class="tags"><span class="tag muted">user</span></div>{{end}}
+  {{if eq .Kind "bot"}}<div class="tags"><span class="tag">bot</span></div>{{end}}
+</li>
+{{end}}
+
+{{define "repohead"}}
+<div class="repohead">
+  <div class="refsel">
+    <details class="menu">
+      <summary class="btn mono">⑂ {{if .Ref}}{{.Ref}}{{else}}no commits{{end}}</summary>
+      <div class="menu-body">
+        {{if .Branches}}<div class="menu-h">Branches</div>{{range .Branches}}<a class="mono" href="/{{$.T.Base}}/-/tree/{{.ShortName}}">{{.ShortName}}</a>{{end}}{{end}}
+        {{if .Tags}}<div class="menu-h">Tags</div>{{range .Tags}}<a class="mono" href="/{{$.T.Base}}/-/tree/{{.ShortName}}">{{.ShortName}}</a>{{end}}{{end}}
+      </div>
+    </details>
+    {{if .Ref}}<a class="btn" href="/{{.T.Base}}/-/commits/{{.Ref}}{{with .Path}}/{{.}}{{end}}">History</a>{{end}}
+    <a class="btn" href="/{{.T.Base}}/-/branches">{{len .Branches}} branch{{if ne (len .Branches) 1}}es{{end}}</a>
+    <a class="btn" href="/{{.T.Base}}/-/tags">{{len .Tags}} tag{{if ne (len .Tags) 1}}s{{end}}</a>
+    {{if gt (add (len .Branches) (len .Tags)) 1}}<a class="btn" href="/{{.T.Base}}/-/compare">Compare</a>{{end}}
+  </div>
+  {{if .Ref}}<a class="btn" href="/{{.T.Base}}/-/archive/{{.Ref}}.zip">⤓ Zip</a>{{end}}
+</div>
+{{end}}
+
+{{define "lastcommit"}}
+{{with .Commit}}
+<div class="lastcommit">
+  <span class="avatar sm">{{initial .Author.Name}}</span>
+  <div class="grow">
+    <a class="title" href="/{{$.T.Base}}/-/commit/{{.Hash}}">{{.Subject}}</a>
+    <div class="sub">{{.Author.Name}} · <time title="{{date .Committer.When}}">{{ago .Committer.When}}</time></div>
+  </div>
+  <a class="mono sha" href="/{{$.T.Base}}/-/commit/{{.Hash}}">{{short .Hash}}</a>
+</div>
+{{end}}
+{{end}}
+
+{{define "pathbar"}}
+<div class="pathbar mono">
+  <a href="/{{.T.Base}}/-/tree/{{.Ref}}">{{.T.P.Path}}{{if .T.IsWiki}}.wiki{{end}}</a>
+  {{range pathParts .Path}}<span class="sep">/</span><a href="/{{$.T.Base}}/-/tree/{{$.Ref}}/{{.Path}}">{{.Name}}</a>{{end}}
+</div>
+{{end}}
+
+{{define "entries"}}
+<ul class="files">
+  {{if .Path}}<li><a class="file dir" href="/{{.T.Base}}/-/tree/{{.Ref}}/{{join .Path ".."}}"><span class="ico">↰</span>..</a></li>{{end}}
+  {{range .Entries}}
+    {{$p := join $.Path .Name}}
+    {{if .IsDir}}<li><a class="file dir" href="/{{$.T.Base}}/-/tree/{{$.Ref}}/{{$p}}"><span class="ico">▸</span>{{.Name}}</a></li>
+    {{else if .IsSubmodule}}<li><span class="file sub"><span class="ico">⧉</span>{{.Name}} <span class="muted mono">@ {{short .Hash}}</span></span></li>
+    {{else}}<li><a class="file" href="/{{$.T.Base}}/-/blob/{{$.Ref}}/{{$p}}"><span class="ico">{{if .IsSymlink}}↪{{else}}·{{end}}</span>{{.Name}}</a></li>{{end}}
+  {{end}}
+</ul>
+{{end}}
+
+{{define "label"}}<a class="label lb-{{.L.ID}}{{if scope .L.Title}} scoped{{end}}" href="{{.URL}}"{{with .L.Description}} title="{{.}}"{{end}}>{{with scope .L.Title}}<span class="lk">{{index . 0}}</span><span class="lv">{{index . 1}}</span>{{else}}{{.L.Title}}{{end}}</a>{{end}}
+
+{{define "labels"}}{{if .L}}<span class="labels">{{range .L}}{{template "label" (dict "L" . "URL" ($.D.Filter "label" .Title))}}{{end}}</span>{{end}}{{end}}
+
+{{/* Extraction buttons for lfs.tar.gz / uploads.tar.gz: A asset, P page. */}}
+{{define "extract"}}{{$a := .A}}{{$p := .P}}{{if $p.Actions}}
+  {{if eq $a.Name "lfs"}}{{if ne $a.Mode "head"}}<form class="inline" method="post" action="/-/action/extract" data-confirm="Extract only the LFS files of each project's default branch? The repositories that use LFS are unbundled first to find them.">
+    <input type="hidden" name="token" value="{{$p.CSRF}}"><input type="hidden" name="what" value="lfs"><input type="hidden" name="mode" value="head">
+    <button class="btn sm" type="submit">Extract default-branch files</button></form>{{end}}{{end}}
+  <form class="inline" method="post" action="/-/action/extract" data-confirm="Extract {{bytes $a.Size}} compressed into the data directory? It needs about {{bytes $a.Disk}} of free space.">
+    <input type="hidden" name="token" value="{{$p.CSRF}}"><input type="hidden" name="what" value="{{$a.Name}}"><input type="hidden" name="mode" value="all">
+    <button class="btn sm" type="submit">{{if eq $a.Name "lfs"}}Extract all{{else}}Extract{{end}} ({{bytes $a.Disk}} on disk)</button></form>
+{{else}}Start gbb with <code>{{if eq $a.Name "lfs"}}--lfs or --lfs=head{{else}}--uploads{{end}}</code>.{{end}}{{end}}
+
+{{/* Changed files of a commit or merge request, with their diffs. */}}
+{{define "difffiles"}}{{range .}}
+<details class="diff" {{if not .Collapse}}open{{end}}>
+  <summary><span class="st st-{{.Status}}">{{.Status}}</span> <span class="mono">{{.Path}}</span>
+    <span class="counts">{{if .Added}}<span class="add">+{{.Added}}</span>{{end}} {{if .Removed}}<span class="del">−{{.Removed}}</span>{{end}}</span></summary>
+  {{if .Note}}<div class="notice">{{.Note}}</div>{{end}}
+  {{if .Lines}}<table class="code diffcode"><tbody>{{range .Lines}}<tr class="k{{lineKind .Kind}}"><td class="ln">{{if .Old}}{{.Old}}{{end}}</td><td class="ln">{{if .New}}{{.New}}{{end}}</td><td class="lc">{{if .HTML}}{{.HTML}}{{else}}{{.Text}}{{end}}</td></tr>{{end}}</tbody></table>{{end}}
+</details>
+{{end}}{{end}}
+
+{{/* Lines of a file: Lines []template.HTML; Anchors adds #L links. */}}
+{{define "codetable"}}<table class="code"><tbody>{{$a := .Anchors}}{{range $i, $l := .Lines}}{{$n := add $i 1}}<tr{{if $a}} id="L{{$n}}"{{end}}><td class="ln">{{if $a}}<a href="#L{{$n}}">{{$n}}</a>{{else}}{{$n}}{{end}}</td><td class="lc">{{$l}}</td></tr>{{end}}</tbody></table>{{end}}
+
+{{/* One commit in a list: C commit, Base project URL path, Browse adds a tree link. */}}
+{{define "commitrow"}}{{$b := .Base}}{{with .C}}<li class="row">
+  <span class="avatar sm">{{initial .Author.Name}}</span>
+  <div class="grow">
+    <a class="title" href="/{{$b}}/-/commit/{{.Hash}}">{{.Subject}}</a>
+    <div class="sub">{{.Author.Name}} · <time title="{{date .Committer.When}}">{{ago .Committer.When}}</time></div>
+  </div>
+  <a class="mono sha" href="/{{$b}}/-/commit/{{.Hash}}">{{short .Hash}}</a>
+  {{if $.Browse}}<a class="btn sm" href="/{{$b}}/-/tree/{{.Hash}}" title="Browse files at this commit">⌂</a>{{end}}
+</li>{{end}}{{end}}
+
+{{define "projtabs"}}
+{{$t := .T}}
+<nav class="tabs">
+  <a class="{{if eq .Active "code"}}on{{end}}" href="/{{$t.Base}}">Code</a>
+  {{if and (not $t.IsWiki) hasTracker}}
+  <a class="{{if eq .Active "issues"}}on{{end}}" href="/{{$t.Base}}/-/issues">Issues <span class="count">{{$t.P.OpenIssues}}</span></a>
+  <a class="{{if eq .Active "merge_requests"}}on{{end}}" href="/{{$t.Base}}/-/merge_requests">Merge requests <span class="count">{{$t.P.OpenMRs}}</span></a>
+  {{if $t.P.Releases}}<a class="{{if eq .Active "releases"}}on{{end}}" href="/{{$t.Base}}/-/releases">Releases <span class="count">{{$t.P.Releases}}</span></a>{{end}}
+  {{end}}
+  {{if and $t.P.Snippets (not $t.IsWiki)}}<a class="{{if eq .Active "snippets"}}on{{end}}" href="/{{$t.Base}}/-/snippets">Snippets <span class="count">{{$t.P.Snippets}}</span></a>{{end}}
+  {{if and $t.P.Wiki (not $t.IsWiki)}}<a href="/{{$t.P.FullPath}}.wiki">Wiki</a>{{end}}
+  {{if and $t.P.Repo (not $t.IsWiki)}}<a href="/-/code?p={{$t.P.FullPath}}">Search code</a>{{end}}
+  {{if $t.IsWiki}}<a href="/{{$t.P.FullPath}}">← Project</a>{{end}}
+</nav>
+{{end}}

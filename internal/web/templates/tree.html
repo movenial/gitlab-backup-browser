@@ -1,0 +1,9 @@
+{{define "tree.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "repohead" .RepoView}}
+{{template "pathbar" .RepoView}}
+{{template "lastcommit" .RepoView}}
+{{template "entries" .}}
+{{if .Readme}}<article class="readme">{{.Readme}}</article>{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

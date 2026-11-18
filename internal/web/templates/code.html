@@ -1,0 +1,41 @@
+{{define "code_head"}}
+<section class="hero"><h1>Search code</h1>
+<p class="muted">{{if .Project}}In <a class="mono" href="/{{.Project}}">{{.Project}}</a>, default branch.{{else}}Default branch of every project, most recently active first.{{end}}</p></section>
+<form class="codeform" action="/-/code" method="get">
+  {{if .Project}}<input type="hidden" name="p" value="{{.Project}}">{{end}}
+  <input type="search" name="q" value="{{.Q}}" placeholder="Text to find, e.g. DB_HOST" autofocus maxlength="200">
+  <div class="opts">
+    <input type="text" name="path" value="{{.Path}}" placeholder="path contains (optional)">
+    <label><input type="checkbox" name="case" value="1" {{if .Case}}checked{{end}}> match case</label>
+    <label><input type="checkbox" name="re" value="1" {{if .Regex}}checked{{end}}> regular expression</label>
+    {{if .Unbuilt}}<label title="Unbundles each repository first: slower, one at a time"><input type="checkbox" name="all" value="1" {{if .All}}checked{{end}}> include {{.Unbuilt}} not yet opened</label>{{end}}
+    <button class="btn" type="submit">Search</button>
+  </div>
+</form>
+{{if .Err}}<div class="notice bad">{{.Err}}</div>{{end}}
+{{if .Searching}}<div class="hits">{{end}}
+{{end}}
+
+{{define "code_wait"}}<div class="notice"><span class="spin"></span> Another search is running; this one starts when it ends.</div>{{end}}
+
+{{define "code_hit"}}
+<div class="hit">
+  <div class="hithead"><a class="mono" href="/{{.Project.FullPath}}">{{.Project.FullPath}}</a> <span class="sep">›</span>
+    <a class="mono" href="/{{.Project.FullPath}}/-/blob/{{.Ref}}/{{.Path}}">{{.Path}}</a></div>
+  <table class="code"><tbody>
+  {{range .Lines}}<tr><td class="ln"><a href="/{{$.Project.FullPath}}/-/blob/{{$.Ref}}/{{$.Path}}#L{{.N}}">{{.N}}</a></td><td class="lc">{{.Pre}}<mark>{{.Mid}}</mark>{{.Post}}</td></tr>{{end}}
+  </tbody></table>
+  {{if .More}}<div class="more muted">+{{.More}} more in this file</div>{{end}}
+</div>
+{{end}}
+
+{{define "code_tail"}}
+</div>
+<p class="muted searchstats">
+  {{with .Stats}}{{.Lines}} matching line{{if ne .Lines 1}}s{{end}} · {{.Files}} files ({{bytes .Bytes}}) in {{.Repos}} repositories · {{.Skipped}} binary, large or LFS files skipped · {{.Elapsed}}{{end}}
+</p>
+{{if .Stats.Truncated}}<div class="notice">Stopped after the first {{.Stats.Lines}} matches. Narrow the search or add a path filter.</div>{{end}}
+{{if .NotOpened}}<div class="notice">{{.NotOpened}} repositories were not searched because they have not been opened yet.
+  <a href="/-/code?q={{.Form.Q}}{{if .Form.Path}}&amp;path={{.Form.Path}}{{end}}{{if .Form.Case}}&amp;case=1{{end}}{{if .Form.Regex}}&amp;re=1{{end}}&amp;all=1">Search them too</a> (each is unbundled first, one at a time).</div>{{end}}
+{{if .Failed}}<div class="notice bad">{{.Failed}} repositories could not be searched.</div>{{end}}
+{{end}}

@@ -1,0 +1,11 @@
+{{define "norepo.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero">
+  <h1>{{.P.Name}}</h1>
+  <p class="mono muted">{{.P.FullPath}}</p>
+  {{if .P.Description}}<p>{{.P.Description}}</p>{{end}}
+</section>
+{{template "projtabs" (dict "T" . "Active" "code")}}
+<div class="notice">This project has no repository bundle in the backup. That is normal for an empty project; otherwise the repository was not backed up.</div>
+{{end}}
+{{template "bottom" .}}{{end}}

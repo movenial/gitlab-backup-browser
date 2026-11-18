@@ -1,0 +1,25 @@
+{{define "backups.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero"><h1>Backups</h1>
+<p class="muted">GitLab backups found in {{range $i, $d := .Dirs}}{{if $i}}, {{end}}<span class="mono" title="{{$d}}">{{shortdir $d}}</span>{{end}}.</p></section>
+{{if .Error}}<div class="notice bad">{{.Error}}</div>{{end}}
+<ul class="list">
+{{range .Backups}}
+<li class="row">
+  <div class="grow">
+    <div class="title mono">{{.Name}}</div>
+    <div class="sub">{{if not .Created.IsZero}}{{date .Created}} UTC · {{end}}{{if .Version}}GitLab {{.Version}} · {{end}}{{if .IsDir}}extracted directory{{else}}{{bytes .Size}}{{end}}</div>
+  </div>
+  <div class="tags">
+    {{if .Active}}<span class="tag st-opened">open</span>{{end}}
+    {{if .Indexed}}<span class="tag muted">indexed</span>{{end}}
+  </div>
+  {{if not .Active}}{{if $.Actions}}
+  <form method="post" action="/-/action/open"><input type="hidden" name="token" value="{{$.CSRF}}"><input type="hidden" name="path" value="{{.Path}}"><button class="btn sm" type="submit">Open</button></form>
+  {{end}}{{else}}<a class="btn sm" href="/">Browse</a>{{end}}
+</li>
+{{else}}<li class="row muted">No GitLab backup (<span class="mono">*_gitlab_backup.tar</span>) in these directories. Start gbb with <span class="mono">--backups DIR</span> or give it a backup path.</li>{{end}}
+</ul>
+{{if not $.Actions}}<p class="muted">Opening another backup is disabled because this server is reachable from the network without <code>--auth</code>.</p>{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

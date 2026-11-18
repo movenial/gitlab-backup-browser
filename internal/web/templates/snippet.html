@@ -1,0 +1,23 @@
+{{define "snippet.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="commithead">
+  <h1>{{.S.Title}} <span class="muted">${{.S.ID}}</span></h1>
+  <p class="sub">
+    <span class="tag muted">{{.S.VisibilityName}}</span>
+    {{if not .S.Project}}<span class="tag muted">personal</span>{{end}}
+    by <b>{{.Author}}</b> · updated {{shortTime .S.Updated}}{{with .S.Project}} · in <a href="/{{.}}">{{.}}</a>{{end}}
+  </p>
+  {{if .Desc}}<div class="readme flat">{{.Desc}}</div>{{end}}
+  {{if .S.Repo}}<div class="clone"><input id="clone" class="mono" readonly value="git clone {{.CloneURL}}"><button class="btn" type="button" data-copy="#clone">Copy</button></div>{{end}}
+</section>
+{{if not .S.Repo}}<div class="notice">The files of this snippet are not in the backup (no repository under <code>@snippets/</code>).</div>{{end}}
+{{range .Files}}
+<details class="diff blobfile"{{if not .Hidden}} open{{end}}>
+  <summary><span class="mono">{{.Path}}</span> <span class="counts muted">{{bytes .Size}}{{with .Lang}} · {{.}}{{end}} · <a href="{{.RawURL}}">raw</a></span></summary>
+  {{with .Note}}<div class="notice">{{.}}</div>{{end}}
+  {{if .Lines}}{{template "codetable" (dict "Lines" .Lines)}}{{end}}
+</details>
+{{end}}
+{{if .More}}<p class="muted">Only the first 50 files are shown.</p>{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

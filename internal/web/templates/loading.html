@@ -1,0 +1,28 @@
+{{define "loading.html"}}{{template "top" .}}
+<section class="loading">
+  <h1>{{if .Status.Error}}The backup could not be opened{{else if .Status.Paused}}Paused while on battery{{else}}Opening the backup{{end}}</h1>
+  {{with .Backup}}<p class="mono muted loadname">{{.}}</p>{{end}}
+  {{if .Status.Error}}
+  <div class="notice bad">{{.Status.Error}}</div>
+  {{if .Picker}}<p><a class="btn" href="/-/backups">Choose another backup</a></p>{{end}}
+  {{else}}
+  <ol class="steps" id="load-steps">
+    {{range loadSteps .Status .Backup}}
+    <li class="step {{.State}}">
+      <span class="dot" aria-hidden="true">{{if eq .State "done"}}✓{{end}}</span>
+      <div class="grow">
+        <div class="stepname">{{.Name}}</div>
+        {{if eq .State "now"}}
+          {{if ge .Percent 0}}<progress id="load-progress" value="{{.Done}}" max="{{.Total}}"></progress>
+          <div class="muted small"><span id="load-pct">{{.Percent}} %</span> · {{bytes .Done}} of {{bytes .Total}}</div>
+          {{else}}<progress id="load-progress"></progress>{{end}}
+        {{else}}<div class="muted small">{{.Hint}}</div>{{end}}
+      </div>
+    </li>
+    {{end}}
+  </ol>
+  <p class="muted small">{{if .Status.Paused}}Plug the device in to continue. {{end}}{{with ago .Status.Started}}Started {{.}}. {{end}}The page updates on its own; the index is kept, so this happens only once per backup.</p>
+  <noscript><meta http-equiv="refresh" content="5"></noscript>
+  {{end}}
+</section>
+{{template "bottom" .}}{{end}}

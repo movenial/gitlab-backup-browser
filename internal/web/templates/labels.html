@@ -1,0 +1,22 @@
+{{define "labels.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" "issues")}}
+<section class="hero"><h1>Labels</h1>
+<p class="muted">{{len .Labels}} label{{if ne (len .Labels) 1}}s{{end}} of this project and its groups · <a href="/{{.T.Base}}/-/milestones">Milestones</a></p></section>
+<ul class="list">
+{{range .Labels}}
+<li class="row">
+  <div class="grow">
+    {{template "label" (dict "L" .Label "URL" (printf "/%s/-/issues?state=all&label=%s" $.Data.T.Base (urlquery .Title)))}}
+    {{if .Group}}<span class="tag muted">group label</span>{{end}}
+    {{with .Description}}<div class="desc">{{.}}</div>{{end}}
+  </div>
+  <div class="tags">
+    <a class="tag" href="/{{$.Data.T.Base}}/-/issues?label={{urlquery .Title}}">{{.Use.OpenIssues}} open issue{{if ne .Use.OpenIssues 1}}s{{end}}</a>
+    <a class="tag" href="/{{$.Data.T.Base}}/-/merge_requests?label={{urlquery .Title}}">{{.Use.OpenMRs}} open MR{{if ne .Use.OpenMRs 1}}s{{end}}</a>
+  </div>
+</li>
+{{else}}<li class="row muted">No labels.</li>{{end}}
+</ul>
+{{end}}
+{{template "bottom" .}}{{end}}

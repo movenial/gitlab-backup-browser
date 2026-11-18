@@ -1,0 +1,43 @@
+{{define "tracker_item.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" .Kind)}}
+<section class="commithead">
+  <h1>{{.Title}} <span class="muted">{{if .Issue}}#{{.Issue.IID}}{{else}}!{{.MR.IID}}{{end}}</span></h1>
+  <p class="sub">
+    <span class="tag st-{{.State}}">{{.State}}</span>
+    {{if and .Issue .Issue.Confidential}}<span class="tag warn">confidential</span>{{end}}
+    {{if and .MR .MR.Draft}}<span class="tag">draft</span>{{end}}
+    opened {{shortTime .Created}} by <b>{{.AuthorName}}</b>
+    {{if .MR}} · <span class="mono">{{.MR.Source}} → {{.MR.Target}}</span>{{end}}
+  </p>
+  {{if or .Labels .Milestone}}<p class="sub meta">
+    {{with .Milestone}}<a class="ms" href="/{{$.Data.T.Base}}/-/{{$.Data.Kind}}?state=all&amp;milestone={{.Title}}">⚑ {{.Title}}</a>{{with .Due}} <span class="muted">· due {{.}}</span>{{end}}{{end}}
+    {{range .Labels}}{{template "label" (dict "L" . "URL" (printf "/%s/-/%s?state=all&label=%s" $.Data.T.Base $.Data.Kind (urlquery .Title)))}}{{end}}
+  </p>{{end}}
+  {{if .Desc}}<div class="readme flat">{{.Desc}}</div>{{end}}
+</section>
+
+<h2>Activity ({{len .Notes}}{{if .MoreNotes}}+{{end}})</h2>
+<ul class="notes">
+{{range .Notes}}
+  {{if .System}}
+  <li class="sysnote"><b>{{.AuthorName}}</b> {{.Body}} <span class="muted">· {{shortTime .Created}}</span></li>
+  {{else}}
+  <li class="note">
+    <div class="sub"><span class="avatar sm">{{initial .AuthorName}}</span> <b>{{.AuthorName}}</b> · {{shortTime .Created}}{{if .Internal}} · <span class="tag warn">internal</span>{{end}}</div>
+    <div class="readme flat">{{.HTML}}</div>
+  </li>
+  {{end}}
+{{else}}<li class="sysnote muted">No comments.</li>{{end}}
+</ul>
+{{if .MoreNotes}}<p class="muted">Only the first {{len .Notes}} comments are shown.</p>{{end}}
+
+{{if .MR}}
+<h2>Changes</h2>
+{{if .Building}}<div class="notice"><span class="spin"></span> Unbundling the repository to show the changes… <a href="">refresh</a></div>{{end}}
+{{if .DiffNote}}<div class="notice">{{.DiffNote}}</div>{{end}}
+{{if .HeadShort}}<p class="muted mono">{{if .BaseShort}}{{.BaseShort}} … {{end}}<a href="/{{.T.Base}}/-/commit/{{.HeadShort}}">{{slice .HeadShort 0 8}}</a> · <a href="/{{.T.Base}}/-/commits/{{.HeadShort}}">commits</a> · {{len .Files}}{{if .Truncated}}+{{end}} files</p>{{end}}
+{{template "difffiles" .Files}}
+{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

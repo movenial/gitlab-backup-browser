@@ -1,0 +1,10 @@
+{{define "search.html"}}{{template "top" .}}
+{{with .Data}}
+<form class="bigsearch" action="/-/search" method="get">
+  <input type="search" name="q" value="{{.Q}}" placeholder="Name, path or description" autofocus>
+</form>
+<p class="muted"><a href="/-/code?q={{.Q}}">Search file contents for “{{.Q}}” instead</a></p>
+<p class="muted">{{len .Results}}{{if .More}}+{{end}} result{{if ne (len .Results) 1}}s{{end}}</p>
+<ul class="list">{{range .Results}}{{template "projrow" .}}{{end}}</ul>
+{{end}}
+{{template "bottom" .}}{{end}}

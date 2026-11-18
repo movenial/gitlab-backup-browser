@@ -1,0 +1,15 @@
+{{define "group.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero">
+  <h1>{{.NS.Name}}</h1>
+  <p class="mono muted">{{.NS.FullPath}}</p>
+  {{if .NS.Description}}<p>{{.NS.Description}}</p>{{end}}
+  <p><a href="/-/projects?group={{.NS.FullPath}}&amp;kind=all">Filter and sort every project in this group, subgroups included →</a></p>
+</section>
+<ul class="list">
+  {{range .Groups}}{{template "nsrow" .}}{{end}}
+  {{range .Projects}}{{template "projrow" .}}{{end}}
+  {{if and (not .Groups) (not .Projects)}}<li class="row muted">This group has no projects in the backup.</li>{{end}}
+</ul>
+{{end}}
+{{template "bottom" .}}{{end}}

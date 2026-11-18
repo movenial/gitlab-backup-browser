@@ -1,0 +1,58 @@
+{{define "projects.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero">
+  <h1>Projects{{with .GroupNS}} in {{.Name}}{{end}}</h1>
+  {{if .F.Group}}<p class="muted mono">{{.F.Group}}/ · <a href="{{.F.With "group" ""}}">all groups</a></p>{{end}}
+</section>
+
+<form class="projfilters" action="/-/projects" method="get" data-autosubmit>
+  <div class="qline">
+  <input type="search" name="q" value="{{.F.Q}}" placeholder="Filter by name, path, description or topic">
+  <details class="morefilters" data-open-wide{{if .F.Active}} open{{end}}>
+  <summary class="btn">Filters{{with .F.Active}} <span class="count">{{.}}</span>{{end}}</summary>
+  <div class="selects">
+  {{if .F.Kind}}<input type="hidden" name="kind" value="{{.F.Kind}}">{{end}}
+  {{if .F.Archived}}<input type="hidden" name="archived" value="{{.F.Archived}}">{{end}}
+  {{if .F.Topic}}<input type="hidden" name="topic" value="{{.F.Topic}}">{{end}}
+  {{if .F.Group}}<input type="hidden" name="group" value="{{.F.Group}}">{{end}}
+  <select name="vis" aria-label="Visibility">
+    <option value="" {{if eq .F.Vis ""}}selected{{end}}>Any visibility</option>
+    <option value="public" {{if eq .F.Vis "public"}}selected{{end}}>Public</option>
+    <option value="internal" {{if eq .F.Vis "internal"}}selected{{end}}>Internal</option>
+    <option value="private" {{if eq .F.Vis "private"}}selected{{end}}>Private</option>
+  </select>
+  <select name="repo" aria-label="Repository">
+    <option value="" {{if eq .F.Repo ""}}selected{{end}}>With or without code</option>
+    <option value="code" {{if eq .F.Repo "code"}}selected{{end}}>With code</option>
+    <option value="empty" {{if eq .F.Repo "empty"}}selected{{end}}>Empty</option>
+  </select>
+  <select name="sort" aria-label="Sort">
+    {{range .Sorts}}<option value="{{index . 0}}" {{if eq (index . 0) $.Data.F.Sort}}selected{{end}}>{{index . 1}}</option>{{end}}
+  </select>
+  <button class="btn apply" type="submit">Apply</button>
+  </div>
+  </details>
+  </div>
+</form>
+
+<div class="chips scroll">
+  {{range .Kinds}}<a class="chip{{if eq .Key $.Data.F.Kind}} on{{end}}" href="{{$.Data.F.With "kind" .Key}}">{{.Label}} <span class="count">{{.Count}}</span></a>{{end}}
+  {{if eq .F.Archived ""}}<a class="chip" href="{{.F.With "archived" "include"}}">Show archived <span class="count">{{.Archived}}</span></a>
+  {{else}}<a class="chip on" href="{{.F.With "archived" ""}}">{{if eq .F.Archived "only"}}Archived only{{else}}Archived included{{end}} ✕</a>
+  {{if eq .F.Archived "include"}}<a class="chip" href="{{.F.With "archived" "only"}}">Archived only</a>{{end}}{{end}}
+  {{if .F.Topic}}<a class="chip on" href="{{.F.With "topic" ""}}"># {{.F.Topic}} ✕</a>{{end}}
+</div>
+{{if and .Topics (not .F.Topic)}}
+<details class="topics"><summary class="muted">Topics</summary>
+  <div class="chips">{{range .Topics}}<a class="chip" href="{{$.Data.F.With "topic" .Name}}"># {{.Name}} <span class="count">{{.Count}}</span></a>{{end}}</div>
+</details>
+{{end}}
+
+<p class="muted">{{.Total}} project{{if ne .Total 1}}s{{end}}</p>
+<ul class="list">{{range .Projects}}{{template "projrow" .}}{{else}}<li class="row muted">No project matches these filters.</li>{{end}}</ul>
+<div class="pager">
+  {{if gt .F.Page 1}}<a class="btn" href="{{.F.PageURL (add .F.Page -1)}}">← Previous</a>{{else}}<span></span>{{end}}
+  {{if .More}}<a class="btn" href="{{.F.PageURL (add .F.Page 1)}}">Next →</a>{{end}}
+</div>
+{{end}}
+{{template "bottom" .}}{{end}}

@@ -1,0 +1,24 @@
+{{define "building.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="loading">
+  <h1>{{.T.Name}}</h1>
+  {{if .Building}}
+  <p class="muted loadname">Unbundling this repository from the backup — only needed the first time, then it opens instantly.</p>
+  <ol class="steps"><li class="step now">
+    <span class="dot" aria-hidden="true"></span>
+    <div class="grow">
+      {{with .Progress}}<div class="stepname">{{if .Stage}}{{.Stage}}{{else}}starting{{end}}{{if gt .Bundles 1}} <span class="muted">· bundle {{.Bundle}} of {{.Bundles}}</span>{{end}}</div>
+      {{if .Total}}<progress class="unbundle" value="{{.Done}}" max="{{.Total}}"></progress>
+      <div class="muted small">{{.Percent}} % · {{.Done}} of {{.Total}} objects</div>
+      {{else}}<progress class="unbundle"></progress>{{end}}
+      {{else}}<div class="stepname">starting</div><progress class="unbundle"></progress>{{end}}
+    </div>
+  </li></ol>
+  <meta http-equiv="refresh" content="2">
+  {{else}}
+  <div class="notice bad">This repository could not be restored from its bundle:<br><code>{{.BuildErr}}</code></div>
+  <p><a class="btn" href="?retry=1">Try again</a></p>
+  {{end}}
+</section>
+{{end}}
+{{template "bottom" .}}{{end}}

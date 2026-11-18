@@ -1,0 +1,33 @@
+{{define "blob.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "repohead" .RepoView}}
+{{template "pathbar" .RepoView}}
+<div class="blob">
+  <div class="blobhead">
+    <span class="muted">{{if .LFSReal}}<span class="tag">Git LFS</span> {{end}}{{bytes .Size}}{{if .Code}} · {{len .Code}} lines{{with .Lang}} · {{.}}{{end}}{{end}}</span>
+    <span>
+      {{if .Markdown}}<a class="btn" href="?plain=1">Source</a>{{end}}
+      {{with .Commit}}<button class="btn" type="button" data-permalink="/{{$.Data.T.Base}}/-/blob/{{.Hash}}/{{$.Data.Path}}" title="Copy a link to this version of the file (and the selected lines)">Copy link</button>{{end}}
+      <a class="btn" href="/{{.T.Base}}/-/commits/{{.Ref}}/{{.Path}}">History</a>
+      <a class="btn" href="/{{.T.Base}}/-/raw/{{.Ref}}/{{.Path}}">Raw</a>
+      <a class="btn" href="/{{.T.Base}}/-/raw/{{.Ref}}/{{.Path}}?download=1">⤓</a>
+    </span>
+  </div>
+  {{if and .LFSOid (not .LFSReal)}}<div class="notice">Stored in <b>Git LFS</b> ({{bytes .LFSSize}}).
+    {{with .LFS}}{{if .Running}}The backup's LFS objects are being extracted ({{.Percent}} %); refresh in a while.
+    {{else if and .Extracted (eq .Mode "head")}}Only the LFS files of default branches were extracted. {{template "extract" (dict "A" . "P" $)}}
+    {{else if .Extracted}}This object is not in the backup's <code>lfs.tar.gz</code> (GitLab may keep LFS in object storage).
+    {{else if .Present}}The backup's LFS objects are not extracted. {{template "extract" (dict "A" . "P" $)}}
+    {{else}}The backup has no <code>lfs.tar.gz</code>.{{end}}{{end}}
+    Only the pointer is shown below.</div>
+  {{template "codetable" (dict "Lines" .Code)}}
+  {{else if .Symlink}}<div class="notice">{{.Symlink}}</div>
+  {{else if .Image}}<div class="img"><img src="/{{.T.Base}}/-/raw/{{.Ref}}/{{.Path}}" alt="{{.Path}}"></div>
+  {{else if .Binary}}<div class="notice">Binary file — use Raw or download.</div>
+  {{else if .TooLarge}}<div class="notice">File too large to display — use Raw or download.</div>
+  {{else if .Markdown}}<article class="readme">{{.Markdown}}</article>
+  {{else}}{{template "codetable" (dict "Lines" .Code "Anchors" true)}}
+  {{end}}
+</div>
+{{end}}
+{{template "bottom" .}}{{end}}

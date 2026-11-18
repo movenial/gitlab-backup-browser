@@ -1,0 +1,23 @@
+{{define "releases.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" "releases")}}
+{{range .Releases}}
+<article class="release">
+  <header class="relhead">
+    <h2 class="reltitle">{{.Title}}</h2>
+    <p class="sub">
+      <a class="tag mono" href="/{{$.Data.T.Base}}/-/tree/{{.Tag}}">{{.Tag}}</a>
+      {{with .Released}}released {{shortTime .}}{{end}}{{if .Author}} by <b>{{.AuthorName}}</b>{{end}}
+      {{with .SHA}} · <a class="mono" href="/{{$.Data.T.Base}}/-/commit/{{.}}">{{slice . 0 8}}</a>{{end}}
+    </p>
+  </header>
+  {{if .Desc}}<div class="readme flat">{{.Desc}}</div>{{end}}
+  <div class="assets">
+    <div class="assets-h">Assets</div>
+    <a class="asset" href="/{{$.Data.T.Base}}/-/archive/{{.Tag}}.zip">Source code (zip)</a>
+    {{range .Links}}<a class="asset" href="{{.Href}}"{{if not .Local}} rel="noopener noreferrer" target="_blank"{{end}}>{{.Name}}{{if not .Local}} <span class="muted small">↗ external{{with .Type}}{{if ne . "other"}} · {{.}}{{end}}{{end}}</span>{{end}}</a>{{end}}
+  </div>
+</article>
+{{else}}<p class="muted">No releases.</p>{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

@@ -1,0 +1,17 @@
+{{define "refs.html"}}{{template "top" .}}
+{{with .Data}}
+{{$v := .V}}
+<h1>{{if eq .Kind "branches"}}Branches{{else}}Tags{{end}}</h1>
+<ul class="list">
+{{if eq .Kind "branches"}}{{range $v.Branches}}
+<li class="row"><div class="grow"><a class="title mono" href="/{{$v.T.Base}}/-/tree/{{.ShortName}}">{{.ShortName}}</a></div>
+<a class="mono sha" href="/{{$v.T.Base}}/-/commit/{{.Target}}">{{short .Target}}</a></li>
+{{else}}<li class="row muted">No branches.</li>{{end}}
+{{else}}{{range $v.Tags}}
+<li class="row"><div class="grow"><a class="title mono" href="/{{$v.T.Base}}/-/tree/{{.ShortName}}">{{.ShortName}}</a></div>
+<a class="mono sha" href="/{{$v.T.Base}}/-/commit/{{.Target}}">{{short .Target}}</a></li>
+{{else}}<li class="row muted">No tags.</li>{{end}}
+{{end}}
+</ul>
+{{end}}
+{{template "bottom" .}}{{end}}

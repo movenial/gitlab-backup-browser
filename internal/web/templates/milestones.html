@@ -1,0 +1,27 @@
+{{define "milestones.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" "issues")}}
+<section class="hero"><h1>Milestones</h1>
+<p class="muted"><a href="/{{.T.Base}}/-/labels">Labels</a></p></section>
+<div class="filters"><div class="seg">
+  <a class="btn{{if eq .State "active"}} on{{end}}" href="?state=active">open <span class="count">{{.Open}}</span></a>
+  <a class="btn{{if eq .State "closed"}} on{{end}}" href="?state=closed">closed <span class="count">{{.Closed}}</span></a>
+  <a class="btn{{if eq .State "all"}} on{{end}}" href="?state=all">all</a>
+</div></div>
+<ul class="list">
+{{range .Milestones}}
+<li class="row ms-row">
+  <div class="grow">
+    <a class="title" href="/{{$.Data.T.Base}}/-/issues?state=all&amp;milestone={{urlquery .Title}}">{{.Title}}</a>
+    {{if .Group}}<span class="tag muted">group milestone</span>{{end}}
+    {{if eq .State "closed"}}<span class="tag">closed</span>{{end}}
+    <div class="sub">{{if .Start}}{{.Start}} → {{end}}{{if .Due}}due {{.Due}}{{else}}no due date{{end}}</div>
+    {{with .Description}}<div class="desc">{{.}}</div>{{end}}
+    <div class="msprog">{{if .Use.Issues}}<progress value="{{.Use.ClosedIssues}}" max="{{.Use.Issues}}"></progress>
+      <span class="muted">{{.Percent}} % · {{.Use.ClosedIssues}}/{{.Use.Issues}} issues closed{{else}}<span class="muted">No issues in this project{{end}}{{if .Use.MRs}} · <a href="/{{$.Data.T.Base}}/-/merge_requests?state=all&amp;milestone={{urlquery .Title}}">{{.Use.MRs}} MR{{if ne .Use.MRs 1}}s{{end}}</a>{{end}}</span></div>
+  </div>
+</li>
+{{else}}<li class="row muted">No {{if ne .State "all"}}{{.State}} {{end}}milestones.</li>{{end}}
+</ul>
+{{end}}
+{{template "bottom" .}}{{end}}

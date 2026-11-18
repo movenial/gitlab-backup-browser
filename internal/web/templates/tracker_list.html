@@ -1,0 +1,46 @@
+{{define "tracker_list.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" .Kind)}}
+{{$base := printf "/%s/-/%s" .T.Base .Kind}}
+<div class="filters">
+  <div class="seg">{{range .States}}<a class="btn{{if eq . $.Data.State}} on{{end}}" href="{{$.Data.Link . 1}}">{{.}}</a>{{end}}</div>
+  <form method="get" action="{{$base}}"><input type="hidden" name="state" value="{{.State}}">{{with .Label}}<input type="hidden" name="label" value="{{.}}">{{end}}{{with .Milestone}}<input type="hidden" name="milestone" value="{{.}}">{{end}}<input type="search" name="q" value="{{.Q}}" placeholder="Search titles and descriptions"></form>
+</div>
+<div class="listmeta">
+  <span class="muted">{{.Total}} {{if eq .Kind "issues"}}issue{{else}}merge request{{end}}{{if ne .Total 1}}s{{end}}</span>
+  {{with .Label}}<a class="chip on" href="{{$.Data.Filter "label" ""}}" title="Remove this filter">label: {{.}} ✕</a>{{end}}
+  {{with .Milestone}}<a class="chip on" href="{{$.Data.Filter "milestone" ""}}" title="Remove this filter">milestone: {{.}} ✕</a>{{end}}
+  <span class="grow"></span>
+  <a href="/{{.T.Base}}/-/labels">Labels</a> · <a href="/{{.T.Base}}/-/milestones">Milestones</a>
+</div>
+<ul class="list">
+{{if eq .Kind "issues"}}
+  {{range .Issues}}
+  <li class="row">
+    <span class="state st-{{.State}}" title="{{.State}}">{{if eq .State "opened"}}●{{else}}✓{{end}}</span>
+    <div class="grow">
+      <a class="title" href="{{$base}}/{{.IID}}">{{.Title}}</a>{{template "labels" (dict "L" ($.Data.Users.SortLabels .Labels) "D" $.Data)}}
+      <div class="sub">#{{.IID}} · opened {{shortTime .Created}} by {{$.Data.Users.UserName .Author}}{{with $.Data.Users.MilestoneOf .Milestone}} · <a class="ms" href="{{$.Data.Filter "milestone" .Title}}">⚑ {{.Title}}</a>{{end}}</div>
+    </div>
+    {{if .Confidential}}<div class="tags"><span class="tag warn">confidential</span></div>{{end}}
+  </li>
+  {{else}}<li class="row muted">Nothing here.</li>{{end}}
+{{else}}
+  {{range .MRs}}
+  <li class="row">
+    <span class="state st-{{.State}}" title="{{.State}}">{{if eq .State "merged"}}⇢{{else if eq .State "opened"}}●{{else}}✕{{end}}</span>
+    <div class="grow">
+      <a class="title" href="{{$base}}/{{.IID}}">{{.Title}}</a>{{template "labels" (dict "L" ($.Data.Users.SortLabels .Labels) "D" $.Data)}}
+      <div class="sub">!{{.IID}} · <span class="mono">{{.Source}} → {{.Target}}</span> · {{$.Data.Users.UserName .Author}} · {{shortTime .Created}}{{with $.Data.Users.MilestoneOf .Milestone}} · <a class="ms" href="{{$.Data.Filter "milestone" .Title}}">⚑ {{.Title}}</a>{{end}}</div>
+    </div>
+    <div class="tags"><span class="tag">{{.State}}</span></div>
+  </li>
+  {{else}}<li class="row muted">Nothing here.</li>{{end}}
+{{end}}
+</ul>
+<div class="pager">
+  {{if gt .Page 1}}<a class="btn" href="{{.Link .State (add .Page -1)}}">← Newer</a>{{else}}<span></span>{{end}}
+  {{if .More}}<a class="btn" href="{{.Link .State (add .Page 1)}}">Older →</a>{{end}}
+</div>
+{{end}}
+{{template "bottom" .}}{{end}}

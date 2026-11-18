@@ -1,0 +1,65 @@
+{{define "info.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero"><h1>About this backup</h1><p class="mono muted">{{.Source}}</p></section>
+<div class="cards">
+  <div class="card"><b>{{.Stats.Projects}}</b><span>projects</span></div>
+  <div class="card"><b>{{.Stats.WithRepo}}</b><span>with a repository</span></div>
+  <div class="card"><b>{{.Stats.Wikis}}</b><span>wikis</span></div>
+  <div class="card"><b>{{.Stats.Namespaces}}</b><span>groups &amp; users</span></div>
+  <div class="card"><b>{{bytes .Stats.BundleBytes}}</b><span>of bundles</span></div>
+  <div class="card{{if .Stats.Unmatched}} warn{{end}}"><b>{{.Stats.Unmatched}}</b><span>unmatched bundles</span></div>
+</div>
+<h2>Database</h2>
+<p>{{if eq .DB "ok"}}Read successfully{{with $.Index.Info.gitlab_version}} (GitLab {{.}}){{end}}.{{else if eq .DB "missing"}}No <code>db/database.sql.gz</code> in this backup: repositories are listed by hash only.{{else}}Could not be read: <code>{{.DB}}</code>{{end}}</p>
+{{if eq .DB "ok"}}{{with $.Index.Schema}}
+<p class="muted">Differences with the database schema gbb knows (a newer or older GitLab):</p>
+<ul class="schema">{{range .}}<li class="{{if eq .Severity "warning"}}del{{else}}muted{{end}}"><span class="mono">{{.Table}}{{with .Column}}.{{.}}{{end}}</span> — {{if .Using}}read from <span class="mono">{{.Using}}</span>{{else}}missing{{with .Effect}}: {{.}}{{end}}{{end}}</li>{{end}}</ul>
+{{else}}<p class="muted">Every table and column gbb reads is present.</p>{{end}}{{end}}
+{{if .Info}}
+<h2>backup_information.yml</h2>
+<table class="kv">{{range .Info}}<tr><th>{{.K}}</th><td class="mono">{{.V}}</td></tr>{{end}}</table>
+{{end}}
+{{if .Missing}}
+<h2>Projects without a repository bundle ({{len .Missing}})</h2>
+<p class="muted">Usually empty projects (GitLab does not bundle empty repositories). If you expected code here, the backup may be incomplete.</p>
+<ul class="list">{{range .Missing}}{{template "projrow" .}}{{end}}</ul>
+{{end}}
+<h2>LFS objects and attachments</h2>
+<table class="kv">
+{{range .Assets}}<tr><th>{{if eq .Name "lfs"}}Git LFS (lfs.tar.gz){{else}}Attachments (uploads.tar.gz){{end}}</th><td>
+  {{if not .Present}}not in this backup
+  {{else if .Running}}extracting{{if eq .Mode "head"}} default-branch files{{end}}… {{.Percent}} %
+  {{else if .Extracted}}extracted: {{.Files}} files, {{bytes .Bytes}}{{if eq .Mode "head"}} (default branches only) {{template "extract" (dict "A" . "P" $)}}{{end}}
+  {{else if .Error}}<span class="del">{{.Error}}</span> {{template "extract" (dict "A" . "P" $)}}
+  {{else}}{{bytes .Size}} compressed ({{bytes .Disk}} once extracted), not extracted. {{template "extract" (dict "A" . "P" $)}}{{end}}
+</td></tr>{{end}}
+</table>
+{{if $.Actions}}
+<h2>Actions</h2>
+<div class="actions">
+  <form method="post" action="/-/action/prefetch">
+    <input type="hidden" name="token" value="{{$.CSRF}}">
+    <button class="btn" type="submit" {{if .Busy}}disabled{{end}}>Unbundle the 20 most active projects</button>
+    <span class="muted">{{if .Busy}}running: {{.Phase}}{{else}}so they open instantly; one at a time, paused on battery with --pause-on-battery{{end}}</span>
+  </form>
+  {{if .OtherCaches}}
+  <form method="post" action="/-/action/prune" data-confirm="Delete the cached data of {{.OtherCaches}} other backup(s)? They will be indexed again if opened.">
+    <input type="hidden" name="token" value="{{$.CSRF}}">
+    <button class="btn" type="submit">Delete cached data of other backups</button>
+    <span class="muted">{{.OtherCaches}} backup(s), {{bytes .OtherCachesSize}}</span>
+  </form>
+  {{end}}
+  {{if $.Picker}}<p><a class="btn" href="/-/backups">Open another backup…</a></p>{{end}}
+</div>
+{{end}}
+<h2>Device</h2>
+<table class="kv">
+  <tr><th>Power</th><td>{{with $.Status.Power}}{{.}}{{else}}checking…{{end}}{{if .PauseOnBattery}} · background work pauses on battery{{else}} · <span class="muted">start with --pause-on-battery to pause background work on battery</span>{{end}}</td></tr>
+  <tr><th>Open repositories</th><td>{{.Mem.OpenRepos}} of {{.Mem.MaxRepos}} max (unused ones close after a few minutes)</td></tr>
+  <tr><th>Shared object cache</th><td>{{ibytes .Mem.CacheBytes}} of {{ibytes .Mem.CacheMax}}</td></tr>
+  <tr><th>Go heap in use</th><td>{{ubytes .Mem.HeapInUse}}</td></tr>
+  <tr><th>Held from the OS</th><td>{{ubytes .Mem.FromOS}}</td></tr>
+</table>
+<p class="muted">Index built {{date .Built}} UTC.</p>
+{{end}}
+{{template "bottom" .}}{{end}}

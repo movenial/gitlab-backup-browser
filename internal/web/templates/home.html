@@ -1,0 +1,43 @@
+{{define "home.html"}}{{template "top" .}}
+{{with .Data}}
+<section class="hero">
+  <h1>GitLab backup</h1>
+  <p class="muted">
+    {{with $.Index.Info.gitlab_version}}GitLab {{.}} · {{end}}{{with $.Index.Info.backup_created_at}}taken {{.}} · {{end}}
+    {{if .Pending}}{{.HashOnly}} repositories found so far{{else}}{{.Stats.Projects}} projects, {{.Stats.WithRepo}} with code{{end}} · {{bytes .Stats.BundleBytes}} of bundles
+  </p>
+</section>
+{{if .Pending}}
+<h2>Repositories found so far</h2>
+<p class="muted">The database is still being read: until then repositories are known by their storage hash, and can already be browsed and cloned. Names, groups and issues appear when the import ends.</p>
+<ul class="list">{{range .ByHash}}{{template "projrow" .}}{{end}}</ul>
+{{if gt .HashOnly (len .ByHash)}}<p><a class="btn" href="/-/projects?kind=unmatched">All {{.HashOnly}} repositories →</a></p>{{end}}
+{{else}}
+{{if .Recent}}
+<h2>Recently active</h2>
+<ul class="list">{{range .Recent}}{{template "projrow" .}}{{end}}</ul>
+{{end}}
+<p><a class="btn" href="/-/projects">Browse all projects with filters →</a></p>
+<h2>Groups</h2>
+<ul class="list">
+  {{range .Groups}}{{template "nsrow" .}}{{else}}<li class="row muted">No groups.</li>{{end}}
+  {{range .Projects}}{{template "projrow" .}}{{end}}
+</ul>
+{{if .Users}}
+<details class="nsgroup"><summary><h2>Users ({{len .Users}})</h2></summary>
+<ul class="list">{{range .Users}}{{template "nsrow" .}}{{end}}</ul>
+</details>
+{{end}}
+{{if .Bots}}
+<details class="nsgroup"><summary><h2>Bots and service accounts ({{len .Bots}})</h2></summary>
+<ul class="list">{{range .Bots}}{{template "nsrow" .}}{{end}}</ul>
+</details>
+{{end}}
+{{if .Other}}
+<details class="nsgroup"><summary><h2>Unmatched bundles</h2></summary>
+<ul class="list">{{range .Other}}{{template "nsrow" .}}{{end}}</ul>
+</details>
+{{end}}
+{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}

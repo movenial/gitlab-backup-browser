@@ -1,0 +1,32 @@
+{{define "compare.html"}}{{template "top" .}}
+{{with .Data}}
+{{template "projtabs" (dict "T" .T "Active" "code")}}
+<section class="hero"><h1>Compare</h1>
+<p class="muted">Changes on the second ref since it diverged from the first, as in a merge request.</p></section>
+<form class="filters compareform" method="get" action="/{{.T.Base}}/-/compare">
+  {{template "refselect" (dict "Name" "from" "Sel" .From "V" .RepoView)}}
+  <span class="muted">…</span>
+  {{template "refselect" (dict "Name" "to" "Sel" .To "V" .RepoView)}}
+  <button class="btn" type="submit">Compare</button>
+  {{if and .From .To}}<a class="btn" href="/{{.T.Base}}/-/compare/{{urlquery .To}}...{{urlquery .From}}" title="Swap">⇄</a>{{end}}
+</form>
+{{with .Error}}<div class="notice bad">{{.}}</div>{{end}}
+{{if and .From .To (not .Error)}}
+<p class="muted">{{.Total}} commit{{if ne .Total 1}}s{{end}} · {{len .Files}}{{if .Truncated}}+{{end}} changed file{{if ne (len .Files) 1}}s{{end}}{{with .Base}} · merge base <a class="mono" href="/{{$.Data.T.Base}}/-/commit/{{.}}">{{slice . 0 8}}</a>{{end}}</p>
+{{if .Commits}}<ul class="list">
+{{range .Commits}}{{template "commitrow" (dict "C" . "Base" $.Data.T.Base)}}{{end}}
+</ul>
+{{if gt .Total (len .Commits)}}<p class="muted">Only the {{len .Commits}} newest commits are listed.</p>{{end}}
+{{else}}<p class="muted">{{.To}} has no commits that {{.From}} does not have.</p>{{end}}
+{{template "difffiles" .Files}}
+{{end}}
+{{end}}
+{{template "bottom" .}}{{end}}
+
+{{define "refselect"}}<select name="{{.Name}}" aria-label="{{.Name}}">
+  {{if not .Sel}}<option value="" selected>choose…</option>{{end}}
+  {{$sel := .Sel}}
+  {{if .V.Branches}}<optgroup label="Branches">{{range .V.Branches}}<option{{if eq .ShortName $sel}} selected{{end}}>{{.ShortName}}</option>{{end}}</optgroup>{{end}}
+  {{if .V.Tags}}<optgroup label="Tags">{{range .V.Tags}}<option{{if eq .ShortName $sel}} selected{{end}}>{{.ShortName}}</option>{{end}}</optgroup>{{end}}
+  {{if and $sel (not (isRef .V $sel))}}<option selected>{{$sel}}</option>{{end}}
+</select>{{end}}
