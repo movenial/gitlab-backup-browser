@@ -1,0 +1,53 @@
+# Checks that the database tables and columns gbb reads (internal/index/
+# schema.go) still exist in GitLab: in the last minor release of older
+# majors, in the newest release, and on GitLab's master branch (to see a
+# change coming before it is released). A missing column gbb needs fails
+# the job; a missing optional one is a warning.
+name: gitlab-schema
+
+on:
+  schedule:
+    - cron: "17 4 * * 1"   # weekly
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - internal/index/schema.go
+      - internal/index/schema_gitlab_test.go
+      - .github/workflows/gitlab-schema.yml
+
+permissions:
+  contents: read
+
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download GitLab schemas
+        run: |
+          set -eu
+          mkdir -p schemas
+          api=https://gitlab.com/api/v4/projects/278964   # gitlab-org/gitlab
+          # Newest release: the highest vX.Y.Z-ee tag that is not a release candidate.
+          latest=$(curl -fsS "$api/repository/tags?order_by=version&sort=desc&per_page=50&search=%5Ev" \
+            | jq -r '[.[].name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+-ee$"))][0]')
+          echo "latest release: $latest"
+          for ref in 15-11-stable-ee 16-11-stable-ee 17-11-stable-ee "$latest" master; do
+            out="schemas/$(echo "$ref" | tr '/' '_').sql"
+            if curl -fsSL "https://gitlab.com/gitlab-org/gitlab/-/raw/$ref/db/structure.sql" -o "$out"; then
+              echo "$ref: $(grep -c '^CREATE TABLE' "$out") tables"
+            else
+              echo "::warning::could not download db/structure.sql for $ref"
+              rm -f "$out"
+            fi
+          done
+          ls schemas/*.sql >/dev/null
+      - name: Compare with what gbb reads
+        # go test runs in the package directory: hand it absolute paths.
+        run: |
+          GBB_GITLAB_STRUCTURE=$(ls "$PWD"/schemas/*.sql | paste -sd, -) \
+            go test -v -count=1 -run 'TestSchemaAgainstGitLab' ./internal/index

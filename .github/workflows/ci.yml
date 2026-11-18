@@ -1,0 +1,83 @@
+name: ci
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  schedule:
+    - cron: "23 5 * * 1"   # weekly: a new advisory against Go or goldmark fails vulncheck
+
+permissions:
+  contents: read
+
+env:
+  # Pinned so a run is reproducible; both need the Go of go.mod or older.
+  STATICCHECK: honnef.co/go/tools/cmd/staticcheck@v0.8.2
+  GOVULNCHECK: golang.org/x/vuln/cmd/govulncheck@v1.10.0
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go run "$STATICCHECK" ./...
+      - run: go test -race ./...
+
+  # Known vulnerabilities in the Go standard library and in goldmark that gbb's
+  # code can reach. A finding is fixed by bumping the `go` line of go.mod or the
+  # dependency, not by changing gbb.
+  vulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go run "$GOVULNCHECK" ./...
+
+  # Every tag v*: the release binaries with a SHA256SUMS as a GitHub Release,
+  # and the linux-amd64 one as a FROM-scratch image on ghcr.io.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [test, vulncheck]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: |
+          mkdir dist
+          for t in linux/amd64 linux/arm64 linux/arm android/arm64 darwin/arm64 darwin/amd64 windows/amd64; do
+            os=${t%/*}; arch=${t#*/}; out=dist/gbb-$os-$arch
+            [ "$os" = windows ] && out=$out.exe
+            # nethttpomithttp2: gbb serves plain HTTP/1.1, HTTP/2 code is dead weight (~0.4 MB).
+            CGO_ENABLED=0 GOOS=$os GOARCH=$arch GOARM=7 go build -trimpath -tags nethttpomithttp2 \
+              -ldflags="-s -w -X main.version=${GITHUB_REF_NAME}" -o "$out" ./cmd/gbb
+          done
+          ls -l dist
+          (cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+      - name: Image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "$IMAGE" .
+          docker run --rm "$IMAGE" version
+          docker push "$IMAGE"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+            LICENSE
+            THIRD_PARTY_NOTICES.md

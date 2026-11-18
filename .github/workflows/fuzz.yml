@@ -1,0 +1,96 @@
+# Weekly fuzzing of the parsers that read backups (and the highlighter).
+# Each target runs in its own job. Three targets stall Go's coverage-guided
+# engine, so they run from a plain test binary (random mutations, no
+# coverage guidance, hundreds of inputs per second); the others use
+# `go test -fuzz`. A failing input is uploaded as an artifact: add it to
+# testdata/fuzz/<Target>/ to keep it as a regression test.
+#
+# Every fuzz worker panics when one input runs for more than 10 s of
+# wall-clock time, and the engine then reports that input as a crasher
+# ("fuzzing process hung or terminated unexpectedly"). On a busy runner a
+# stalled worker looks the same, so a reported input is replayed alone with
+# the same 10 s limit: if none fails, the job passes with a warning, because
+# the parsers are deterministic and an input that really crashes or hangs
+# fails again.
+name: fuzz
+
+on:
+  schedule:
+    - cron: "41 3 * * 0"   # weekly
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "Minutes per target"
+        default: "10"
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { pkg: backup, target: FuzzOpenTar }
+          - { pkg: backup, target: FuzzExtractTarGz, plain: true }
+          - { pkg: backup, target: FuzzCleanName }
+          - { pkg: backup, target: FuzzBackupInfo }
+          - { pkg: backup, target: FuzzLayout }
+          - { pkg: backup, target: FuzzChainStart }
+          - { pkg: gitstore, target: FuzzIndexPack }
+          - { pkg: gitstore, target: FuzzReadPack, plain: true }
+          - { pkg: gitstore, target: FuzzIndexPackEntries, plain: true }
+          - { pkg: gitstore, target: FuzzDelta }
+          - { pkg: gitstore, target: FuzzBundleHeader }
+          - { pkg: gitstore, target: FuzzParseObjects }
+          - { pkg: highlight, target: FuzzLines }
+          - { pkg: index, target: FuzzLoad }
+          - { pkg: pgdump, target: FuzzParse }
+          - { pkg: pgdump, target: FuzzUnescape }
+          - { pkg: tracker, target: FuzzStore }
+          - { pkg: web, target: FuzzUploadRequest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Fuzz ${{ matrix.pkg }}/${{ matrix.target }}
+        env:
+          MINUTES: ${{ github.event.inputs.minutes || '10' }}
+          PKG: ${{ matrix.pkg }}
+          TARGET: ${{ matrix.target }}
+          PLAIN: ${{ matrix.plain || false }}
+        run: |
+          set -u
+          go test -c -o fuzz.test "./internal/$PKG" || exit 1
+          cd "internal/$PKG"
+          corpus=testdata/fuzz/$TARGET
+          mkdir -p "$corpus"
+          ls "$corpus" | sort > "$RUNNER_TEMP/corpus-before"
+          rc=0
+          if [ "$PLAIN" = "true" ]; then
+            ../../fuzz.test -test.run XXX -test.fuzz "^${TARGET}\$" -test.fuzztime "${MINUTES}m" \
+              -test.parallel "$(nproc)" -test.fuzzcachedir "$RUNNER_TEMP/fuzzcache" || rc=$?
+          else
+            go test -run XXX -fuzz "^${TARGET}\$" -fuzztime "${MINUTES}m" . || rc=$?
+          fi
+          [ "$rc" -eq 0 ] && exit 0
+          new=$(ls "$corpus" | sort | comm -13 "$RUNNER_TEMP/corpus-before" -)
+          # No input written: the run itself broke, not the code under test.
+          [ -n "$new" ] || exit "$rc"
+          for id in $new; do
+            echo "Replaying $corpus/$id alone"
+            ../../fuzz.test -test.run "^${TARGET}/${id}\$" -test.timeout 10s -test.v || exit 1
+          done
+          echo "::warning::no reported input fails when replayed alone; the fuzz workers were stalled by the runner, not by an input."
+          for id in $new; do rm "$corpus/$id"; done
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crasher-${{ matrix.target }}
+          path: internal/${{ matrix.pkg }}/testdata/fuzz/${{ matrix.target }}/
+          if-no-files-found: ignore
