@@ -1,0 +1,6 @@
+/dist/
+/gbb
+*.test
+/data/
+/.go/
+/.fuzzcache/
