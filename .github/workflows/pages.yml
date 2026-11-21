@@ -1,0 +1,44 @@
+name: pages
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', 'screenshots/**', 'internal/web/static/icon.svg', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer push waits instead of cancelling a live one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # The project site: site/ plus the README's screenshots and the app's icon,
+  # published at https://movenial.github.io/gitlab-backup-browser/.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assemble
+        run: |
+          mkdir _site
+          cp -r site/. _site/
+          cp -r screenshots _site/
+          cp internal/web/static/icon.svg _site/
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
