@@ -44,6 +44,8 @@ type Issue struct {
 	Confidential bool    `json:"confidential,omitempty"`
 	Milestone    int64   `json:"milestone,omitempty"`
 	Labels       []int64 `json:"-"` // filled when read
+	// Redacted: a confidential issue reduced to its number and state.
+	Redacted bool `json:"-"`
 }
 
 // MergeRequest is a project merge request.
@@ -122,6 +124,8 @@ type Note struct {
 	Created  string `json:"created,omitempty"`
 	System   bool   `json:"system,omitempty"`
 	Internal bool   `json:"internal,omitempty"`
+	// Redacted: an internal note reduced to its date.
+	Redacted bool `json:"-"`
 }
 
 // User is the public part of a user row (no e-mail, no credentials).
@@ -134,7 +138,7 @@ type User struct {
 // Issues and OpenIssues too.
 type Counts struct {
 	Issues, OpenIssues, MRs, OpenMRs, Releases int
-	ConfidentialIssues, OpenConfidentialIssues int
+	ConfidentialIssues                         int
 }
 
 // IssueState maps issues.state_id.
@@ -358,9 +362,6 @@ func (w *Writer) AddIssue(pid int64, is *Issue) {
 	}
 	if is.Confidential {
 		c.ConfidentialIssues++
-		if is.State == "opened" {
-			c.OpenConfidentialIssues++
-		}
 	}
 	w.issueOwner[is.ID] = mrRef{pid, is.IID}
 	w.append(pid, "issues", is)
@@ -659,8 +660,9 @@ type Query struct {
 	Milestone string // milestone title; "none" = without milestone
 	Offset    int
 	Limit     int
-	// HideConfidential leaves confidential issues out of the list and the
-	// total.
+	// HideConfidential lists confidential issues as placeholders (number
+	// and state only, see Issue.Redacted), and only when no search, label
+	// or milestone filter is set, since a match would tell what they hold.
 	HideConfidential bool
 }
 
@@ -741,6 +743,7 @@ func (s *Store) MilestoneOf(id int64) *Milestone {
 type item interface {
 	head() (iid int64, state, title, desc string, milestone int64)
 	confidential() bool
+	redact()
 	setLabels([]int64)
 	dropDescription()
 }
@@ -748,7 +751,10 @@ type item interface {
 func (is *Issue) head() (int64, string, string, string, int64) {
 	return is.IID, is.State, is.Title, is.Description, is.Milestone
 }
-func (is *Issue) confidential() bool  { return is.Confidential }
+func (is *Issue) confidential() bool { return is.Confidential }
+func (is *Issue) redact() {
+	*is = Issue{ID: is.ID, IID: is.IID, State: is.State, Confidential: true, Redacted: true}
+}
 func (is *Issue) setLabels(l []int64) { is.Labels = l }
 func (is *Issue) dropDescription()    { is.Description = "" }
 
@@ -756,6 +762,7 @@ func (mr *MergeRequest) head() (int64, string, string, string, int64) {
 	return mr.IID, mr.State, mr.Title, mr.Description, mr.Milestone
 }
 func (mr *MergeRequest) confidential() bool  { return false }
+func (mr *MergeRequest) redact()             {}
 func (mr *MergeRequest) setLabels(l []int64) { mr.Labels = l }
 func (mr *MergeRequest) dropDescription()    { mr.Description = "" }
 
@@ -793,6 +800,9 @@ func list[T any, P interface {
 	err = eachItem[T, P](s, pid, kind, func(v P) error {
 		iid, state, title, desc, ms := v.head()
 		if q.HideConfidential && v.confidential() {
+			if q.Search == "" && q.Label == "" && q.Milestone == "" && q.match(state, "", "") {
+				iids = append(iids, iid)
+			}
 			return nil
 		}
 		if q.match(state, title, desc) && s.matchMeta(q, labels[key(iid)], ms) {
@@ -807,8 +817,12 @@ func list[T any, P interface {
 	err = eachItem[T, P](s, pid, kind, func(v P) error {
 		iid, _, _, _, _ := v.head()
 		if _, ok := want[iid]; ok {
-			v.dropDescription()
-			v.setLabels(labels[key(iid)])
+			if q.HideConfidential && v.confidential() {
+				v.redact()
+			} else {
+				v.dropDescription()
+				v.setLabels(labels[key(iid)])
+			}
 			page = append(page, v)
 		}
 		return nil
@@ -892,8 +906,8 @@ func pageOf(iids []int64, q Query) map[int64]struct{} {
 }
 
 // Notes returns the notes on one issue or MR (by its database id), oldest
-// first. At most limit notes are returned. Internal notes are left out
-// unless internal is set.
+// first. At most limit notes are returned. Internal notes are reduced to
+// their date (Note.Redacted) unless internal is set.
 func (s *Store) Notes(pid int64, typ string, target int64, limit int, internal bool) ([]*Note, bool, error) {
 	var out []*Note
 	more := false
@@ -906,7 +920,10 @@ func (s *Store) Notes(pid int64, typ string, target int64, limit int, internal b
 		if err := json.Unmarshal(line, &n); err != nil {
 			return err
 		}
-		if n.Type == typ && n.Target == target && (internal || !n.Internal) {
+		if n.Type == typ && n.Target == target {
+			if n.Internal && !internal {
+				n = Note{ID: n.ID, Type: n.Type, Target: n.Target, Created: n.Created, Internal: true, Redacted: true}
+			}
 			if len(out) == limit {
 				more = true
 				return nil

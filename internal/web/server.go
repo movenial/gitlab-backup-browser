@@ -34,9 +34,10 @@ type Server struct {
 	// another backup...). The caller disables them when the server is
 	// reachable from the network without a login.
 	ActionsAllowed bool
-	// ShowConfidential shows confidential issues and internal comments.
-	// The caller sets it only when a login protects the server: without
-	// one, anyone who reaches gbb would read them.
+	// ShowConfidential shows confidential issues and internal comments;
+	// otherwise they appear as placeholders that ask for a login. The
+	// caller sets it only when a login protects the server: without one,
+	// anyone who reaches gbb would read them.
 	ShowConfidential bool
 	csrf             string // token required by every action form
 	tmpl             *template.Template
@@ -56,7 +57,6 @@ func (s *Server) mgr() *app.Manager { return s.hub.Active() }
 func NewHub(h *app.Hub, version string) (*Server, error) {
 	s := &Server{codeSem: make(chan struct{}, 1), hub: h, ActionsAllowed: true, Version: version}
 	funcs := template.FuncMap{
-		"openIssues": s.openIssues,
 		"hasTracker": func() bool { m := h.Active(); return m != nil && m.Tracker() != nil },
 		"dict": func(kv ...any) map[string]any {
 			out := map[string]any{}
@@ -100,14 +100,6 @@ func NewHub(h *app.Hub, version string) (*Server, error) {
 	rand.Read(tok)
 	s.csrf, s.tmpl, s.static = hex.EncodeToString(tok), t, http.StripPrefix("/-/static/", http.FileServer(http.FS(sub)))
 	return s, nil
-}
-
-// openIssues is the number of open issues of p this server shows.
-func (s *Server) openIssues(p *index.Project) int {
-	if s.ShowConfidential {
-		return p.OpenIssues
-	}
-	return p.OpenIssues - p.OpenConfidentialIssues
 }
 
 // --- page plumbing ---

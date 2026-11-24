@@ -1,6 +1,13 @@
 {{define "tracker_item.html"}}{{template "top" .}}
 {{with .Data}}
 {{template "projtabs" (dict "T" .T "Active" .Kind)}}
+{{if and .Issue .Issue.Redacted}}
+<section class="commithead">
+  <h1>🔒 Confidential issue <span class="muted">#{{.Issue.IID}}</span></h1>
+  <p class="sub"><span class="tag st-{{.Issue.State}}">{{.Issue.State}}</span> <span class="tag warn">confidential</span></p>
+  <div class="notice">This issue is confidential: its title, description and comments are readable only when gbb is started with a login, <code>gbb serve --auth user:password</code> (or <code>GBB_AUTH</code>).</div>
+</section>
+{{else}}
 <section class="commithead">
   <h1>{{.Title}} <span class="muted">{{if .Issue}}#{{.Issue.IID}}{{else}}!{{.MR.IID}}{{end}}</span></h1>
   <p class="sub">
@@ -22,6 +29,8 @@
 {{range .Notes}}
   {{if .System}}
   <li class="sysnote"><b>{{.AuthorName}}</b> {{.Body}} <span class="muted">· {{shortTime .Created}}</span></li>
+  {{else if .Redacted}}
+  <li class="sysnote">🔒 Internal comment, readable only when gbb is started with a login (<code>--auth</code>) <span class="muted">· {{shortTime .Created}}</span></li>
   {{else}}
   <li class="note">
     <div class="sub"><span class="avatar sm">{{initial .AuthorName}}</span> <b>{{.AuthorName}}</b> · {{shortTime .Created}}{{if .Internal}} · <span class="tag warn">internal</span>{{end}}</div>
@@ -39,5 +48,6 @@
 {{if .HeadShort}}<p class="muted mono">{{if .BaseShort}}{{.BaseShort}} … {{end}}<a href="/{{.T.Base}}/-/commit/{{.HeadShort}}">{{slice .HeadShort 0 8}}</a> · <a href="/{{.T.Base}}/-/commits/{{.HeadShort}}">commits</a> · {{len .Files}}{{if .Truncated}}+{{end}} files</p>{{end}}
 {{template "difffiles" .Files}}
 {{end}}
+{{end}}{{/* not a redacted issue */}}
 {{end}}
 {{template "bottom" .}}{{end}}

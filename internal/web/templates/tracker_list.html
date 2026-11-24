@@ -13,10 +13,20 @@
   <span class="grow"></span>
   <a href="/{{.T.Base}}/-/labels">Labels</a> · <a href="/{{.T.Base}}/-/milestones">Milestones</a>
 </div>
-{{with .HiddenConfidential}}<div class="notice">{{.}} confidential issue{{if ne . 1}}s are{{else}} is{{end}} not shown: gbb shows them only when it is started with a login (<code>--auth</code>).</div>{{end}}
+{{with .FilteredConfidential}}<div class="notice">🔒 {{.}} confidential issue{{if ne . 1}}s are{{else}} is{{end}} left out of searches and filters: {{if ne . 1}}they are{{else}}it is{{end}} readable only when gbb is started with a login (<code>--auth</code>).</div>{{end}}
 <ul class="list">
 {{if eq .Kind "issues"}}
   {{range .Issues}}
+  {{if .Redacted}}
+  <li class="row">
+    <span class="state st-{{.State}}" title="{{.State}}">{{if eq .State "opened"}}●{{else}}✓{{end}}</span>
+    <div class="grow">
+      <a class="title muted" href="{{$base}}/{{.IID}}">🔒 Confidential issue</a>
+      <div class="sub">#{{.IID}} · readable only when gbb is started with a login (<code>--auth</code>)</div>
+    </div>
+    <div class="tags"><span class="tag warn">confidential</span></div>
+  </li>
+  {{else}}
   <li class="row">
     <span class="state st-{{.State}}" title="{{.State}}">{{if eq .State "opened"}}●{{else}}✓{{end}}</span>
     <div class="grow">
@@ -25,6 +35,7 @@
     </div>
     {{if .Confidential}}<div class="tags"><span class="tag warn">confidential</span></div>{{end}}
   </li>
+  {{end}}
   {{else}}<li class="row muted">Nothing here.</li>{{end}}
 {{else}}
   {{range .MRs}}

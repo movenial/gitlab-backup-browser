@@ -126,17 +126,21 @@ func TestEndToEnd(t *testing.T) {
 			if err != nil || !strings.Contains(is.Description, "**logo**") {
 				t.Fatalf("issue 1: %+v %v", is, err)
 			}
-			notes, _, err := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, false)
-			if err != nil || len(notes) != 2 || !notes[1].System {
+			notes, _, err := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, true)
+			if err != nil || len(notes) != 3 || !notes[1].System || !notes[2].Internal || notes[2].Body == "" {
 				t.Fatalf("notes %+v %v", notes, err)
 			}
-			if notes, _, _ := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, true); len(notes) != 3 || !notes[2].Internal {
-				t.Fatalf("notes with internal ones %+v", notes)
+			if notes, _, _ := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, false); len(notes) != 3 || !notes[2].Redacted || notes[2].Body != "" || notes[2].Author != 0 || notes[2].Created == "" {
+				t.Fatalf("redacted internal note %+v", notes[2])
 			}
-			if _, n, _ := ts.Issues(fixture.WebsiteID, tracker.Query{State: "opened", HideConfidential: true}); n != 1 {
-				t.Fatalf("open issues without confidential ones: %d", n)
+			hidden, n, _ := ts.Issues(fixture.WebsiteID, tracker.Query{State: "opened", HideConfidential: true})
+			if n != 2 || hidden[0].IID != 3 || !hidden[0].Redacted || hidden[0].Title != "" || hidden[0].Author != 0 || hidden[0].State != "opened" {
+				t.Fatalf("confidential placeholder %d %+v", n, hidden)
 			}
-			if w := ix.Project("acme/website"); w.ConfidentialIssues != 1 || w.OpenConfidentialIssues != 1 || w.OpenIssues != 2 {
+			if _, n, _ := ts.Issues(fixture.WebsiteID, tracker.Query{State: "all", Search: "contact", HideConfidential: true}); n != 0 {
+				t.Fatalf("confidential issue found by search: %d", n)
+			}
+			if w := ix.Project("acme/website"); w.ConfidentialIssues != 1 || w.OpenIssues != 2 {
 				t.Fatalf("confidential counts %+v", w)
 			}
 			mr, err := ts.MergeRequest(fixture.WebsiteID, 1)

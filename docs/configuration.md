@@ -61,12 +61,16 @@ disabled: anyone on the network can browse, nobody can change anything.
 
 ### Confidential issues
 
-Without `--auth`, gbb leaves out confidential issues and internal comments:
-they are not listed, not counted, and their pages answer `404`. The issue
-list says how many are hidden. Start gbb with `--auth` to see them. Their
-attachments (with `--uploads`) are still served to anyone who has the link,
-as GitLab's random path in each link is the only key, and that link is only
-on the hidden page.
+Without `--auth`, gbb shows confidential issues and internal comments as
+placeholders: a confidential issue keeps its number and state in the list,
+with "Confidential issue" instead of its title, and its page (`403`) says
+to start gbb with a login; an internal comment keeps only its date. Searches
+and label or milestone filters leave confidential issues out, as a match
+would tell what they hold, and the list says so; Labels and Milestones pages
+do not count them. Start gbb with `--auth` to read them. Their attachments
+(with `--uploads`) are still served to anyone who has the link, as GitLab's
+random path in each link is the only key, and that link is only on the
+hidden page.
 
 ### Host names
 

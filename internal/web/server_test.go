@@ -66,29 +66,35 @@ func setupServer(t *testing.T, tweak func(*app.Config)) (*httptest.Server, *Serv
 // issues and internal comments are neither shown nor counted.
 func TestConfidentialNeedsLogin(t *testing.T) {
 	ts, _, _, _ := setupServer(t, nil)
-	body := expect(t, ts, "/acme/website/-/issues?state=all", 200, "Logo is blurry on retina", "1 confidential issue is not shown", "--auth")
-	if strings.Contains(body, "Security contact") || strings.Contains(body, ">confidential<") {
-		t.Fatal("confidential issue listed without a login")
+	// The list keeps the issue's number and state, nothing else.
+	body := expect(t, ts, "/acme/website/-/issues?state=all", 200, "Logo is blurry on retina",
+		"🔒 Confidential issue", "#3 · readable only when gbb is started with a login", `href="/acme/website/-/issues/3"`,
+		`>Issues <span class="count">2</span>`)
+	if strings.Contains(body, "Security contact") || strings.Contains(body, "left out of searches") {
+		t.Fatal("confidential title or filter notice in the plain list")
 	}
-	if !strings.Contains(body, `>Issues <span class="count">1</span>`) {
-		t.Fatal("open issue count includes the confidential issue")
+	// A search or filter leaves it out (a match would tell what it holds) and says so.
+	for _, q := range []string{"q=internal", "q=contact", "milestone=none", "label=bug"} {
+		body = expect(t, ts, "/acme/website/-/issues?state=all&"+q, 200, "1 confidential issue is left out of searches and filters", "--auth")
+		if strings.Contains(body, "Security contact") || strings.Contains(body, "issues/3") {
+			t.Fatalf("%s: confidential issue matched", q)
+		}
 	}
-	if _, body, _ = get(t, ts.URL+"/acme/website/-/issues?state=all&q=internal"); strings.Contains(body, "Security contact") {
-		t.Fatal("confidential issue found by search")
-	}
-	body = expect(t, ts, "/acme/website/-/issues/3", 404, "This issue is confidential", "--auth")
-	if strings.Contains(body, "internal only") || strings.Contains(body, "Security contact") {
+	// Its page: number, state and how to read it; no title, description or comments.
+	body = expect(t, ts, "/acme/website/-/issues/3", 403, "🔒 Confidential issue", "#3", "gbb serve --auth user:password", "opened")
+	if strings.Contains(body, "internal only") || strings.Contains(body, "Security contact") || strings.Contains(body, "Activity") {
 		t.Fatal("confidential issue content shown")
 	}
-	body = expect(t, ts, "/acme/website/-/issues/1", 200, "<strong>Safari</strong>", "Activity (2)")
-	if strings.Contains(body, "the <strong>team</strong> sees") {
+	expect(t, ts, "/acme/website/-/issues/99", 404)
+	// Internal comments keep their place and date only.
+	body = expect(t, ts, "/acme/website/-/issues/1", 200, "<strong>Safari</strong>", "Activity (3)",
+		"🔒 Internal comment, readable only when gbb is started with a login", "2024-09-01 13:00")
+	if strings.Contains(body, "<strong>team</strong>") {
 		t.Fatal("internal comment shown without a login")
 	}
+	// Label and milestone counts leave confidential issues out.
 	if _, body, _ = get(t, ts.URL+"/acme/website/-/milestones?state=all"); !strings.Contains(body, "issues closed") {
 		t.Fatalf("milestones page: %s", body)
-	}
-	if _, body, _ = get(t, ts.URL+"/-/projects?sort=issues"); !strings.Contains(body, "acme/website") {
-		t.Fatal("projects sorted by issues")
 	}
 }
 

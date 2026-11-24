@@ -13,9 +13,6 @@ import (
 
 const trackerPageSize = 50
 
-// confidentialHidden explains why a confidential issue is not shown.
-const confidentialHidden = "This issue is confidential. gbb shows confidential issues and internal comments only when it is started with a login (--auth user:password)."
-
 type trackerListData struct {
 	T         *target
 	Kind      string // issues | merge_requests
@@ -30,9 +27,9 @@ type trackerListData struct {
 	More      bool
 	Users     *tracker.Store
 	States    []string
-	// HiddenConfidential counts the project's confidential issues left
-	// out because no login protects the server.
-	HiddenConfidential int
+	// FilteredConfidential counts the project's confidential issues left
+	// out of a search or filter because no login protects the server.
+	FilteredConfidential int
 }
 
 func (s *Server) noTracker(w http.ResponseWriter, r *http.Request, t *target) {
@@ -62,8 +59,8 @@ func (s *Server) trackerList(w http.ResponseWriter, r *http.Request, t *target, 
 	if kind == "issues" {
 		d.States = []string{"opened", "closed", "all"}
 		d.Issues, d.Total, err = ts.Issues(t.P.ID, query)
-		if !s.ShowConfidential {
-			d.HiddenConfidential = t.P.ConfidentialIssues
+		if !s.ShowConfidential && (d.Q != "" || d.Label != "" || d.Milestone != "") {
+			d.FilteredConfidential = t.P.ConfidentialIssues
 		}
 	} else {
 		title = "Merge requests"
@@ -135,7 +132,9 @@ func (s *Server) trackerItem(w http.ResponseWriter, r *http.Request, t *target, 
 			return
 		}
 		if is.Confidential && !s.ShowConfidential {
-			s.errorPage(w, r, http.StatusNotFound, confidentialHidden)
+			cs := append(s.crumbsFor(t), crumb{"Issues", "/" + t.Base + "/-/issues"})
+			s.render(w, r, http.StatusForbidden, "tracker_item.html", "Confidential issue #"+strconv.FormatInt(iid, 10), cs,
+				trackerItemData{T: t, Kind: kind, Issue: &tracker.Issue{IID: iid, State: is.State, Confidential: true, Redacted: true}})
 			return
 		}
 		d.Issue, d.Title, d.State, d.Created = is, is.Title, is.State, is.Created
