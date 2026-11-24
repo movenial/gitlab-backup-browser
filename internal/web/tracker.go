@@ -13,6 +13,9 @@ import (
 
 const trackerPageSize = 50
 
+// confidentialHidden explains why a confidential issue is not shown.
+const confidentialHidden = "This issue is confidential. gbb shows confidential issues and internal comments only when it is started with a login (--auth user:password)."
+
 type trackerListData struct {
 	T         *target
 	Kind      string // issues | merge_requests
@@ -27,6 +30,9 @@ type trackerListData struct {
 	More      bool
 	Users     *tracker.Store
 	States    []string
+	// HiddenConfidential counts the project's confidential issues left
+	// out because no login protects the server.
+	HiddenConfidential int
 }
 
 func (s *Server) noTracker(w http.ResponseWriter, r *http.Request, t *target) {
@@ -50,12 +56,15 @@ func (s *Server) trackerList(w http.ResponseWriter, r *http.Request, t *target, 
 		d.State = "opened"
 	}
 	query := tracker.Query{State: d.State, Search: d.Q, Label: d.Label, Milestone: d.Milestone,
-		Offset: (pg - 1) * trackerPageSize, Limit: trackerPageSize}
+		Offset: (pg - 1) * trackerPageSize, Limit: trackerPageSize, HideConfidential: !s.ShowConfidential}
 	var err error
 	title := "Issues"
 	if kind == "issues" {
 		d.States = []string{"opened", "closed", "all"}
 		d.Issues, d.Total, err = ts.Issues(t.P.ID, query)
+		if !s.ShowConfidential {
+			d.HiddenConfidential = t.P.ConfidentialIssues
+		}
 	} else {
 		title = "Merge requests"
 		d.States = []string{"opened", "merged", "closed", "all"}
@@ -125,6 +134,10 @@ func (s *Server) trackerItem(w http.ResponseWriter, r *http.Request, t *target, 
 			s.errorPage(w, r, http.StatusNotFound, "No such issue in this backup.")
 			return
 		}
+		if is.Confidential && !s.ShowConfidential {
+			s.errorPage(w, r, http.StatusNotFound, confidentialHidden)
+			return
+		}
 		d.Issue, d.Title, d.State, d.Created = is, is.Title, is.State, is.Created
 		d.AuthorName = ts.UserName(is.Author)
 		d.Desc = renderMarkdown([]byte(is.Description), blobBase, rawBase, "")
@@ -144,7 +157,7 @@ func (s *Server) trackerItem(w http.ResponseWriter, r *http.Request, t *target, 
 		noteType, target = "MergeRequest", mr.ID
 		s.mrChanges(&d, t, mr)
 	}
-	notes, more, err := ts.Notes(t.P.ID, noteType, target, maxNotes)
+	notes, more, err := ts.Notes(t.P.ID, noteType, target, maxNotes, s.ShowConfidential)
 	if err != nil {
 		s.errorPage(w, r, http.StatusInternalServerError, err.Error())
 		return

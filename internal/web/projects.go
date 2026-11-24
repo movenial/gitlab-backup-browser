@@ -229,7 +229,7 @@ func (s *Server) projects(w http.ResponseWriter, r *http.Request) {
 		case "created":
 			return a.CreatedAt > b.CreatedAt
 		case "issues":
-			return a.OpenIssues > b.OpenIssues
+			return s.openIssues(a) > s.openIssues(b)
 		case "mrs":
 			return a.OpenMRs > b.OpenMRs
 		default:

@@ -22,7 +22,7 @@ import (
 )
 
 // FormatVersion is bumped whenever the on-disk index changes shape.
-const FormatVersion = 1
+const FormatVersion = 2
 
 // Namespace is a GitLab group or user namespace.
 type Namespace struct {
@@ -57,9 +57,12 @@ type Project struct {
 	Unmatched    bool   `json:"unmatched,omitempty"`
 	Issues       int    `json:"issues,omitempty"`
 	OpenIssues   int    `json:"open_issues,omitempty"`
-	MRs          int    `json:"mrs,omitempty"`
-	OpenMRs      int    `json:"open_mrs,omitempty"`
-	Releases     int    `json:"releases,omitempty"`
+	// Confidential issues, also counted in Issues and OpenIssues.
+	ConfidentialIssues     int `json:"confidential_issues,omitempty"`
+	OpenConfidentialIssues int `json:"open_confidential_issues,omitempty"`
+	MRs                    int `json:"mrs,omitempty"`
+	OpenMRs                int `json:"open_mrs,omitempty"`
+	Releases               int `json:"releases,omitempty"`
 	// Kind is "group" (in a group), "personal" (a person's namespace), "bot"
 	// (a bot or service account's namespace) or "unmatched".
 	Kind     string   `json:"kind,omitempty"`
@@ -315,6 +318,7 @@ func Build(src backup.Source, fingerprint string, opts Options, progress Progres
 			for _, p := range ix.Projects {
 				if c, ok := counts[p.ID]; ok && p.ID != 0 {
 					p.Issues, p.OpenIssues, p.MRs, p.OpenMRs, p.Releases = c.Issues, c.OpenIssues, c.MRs, c.OpenMRs, c.Releases
+					p.ConfidentialIssues, p.OpenConfidentialIssues = c.ConfidentialIssues, c.OpenConfidentialIssues
 				}
 			}
 		}()

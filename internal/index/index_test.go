@@ -126,9 +126,18 @@ func TestEndToEnd(t *testing.T) {
 			if err != nil || !strings.Contains(is.Description, "**logo**") {
 				t.Fatalf("issue 1: %+v %v", is, err)
 			}
-			notes, _, err := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100)
+			notes, _, err := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, false)
 			if err != nil || len(notes) != 2 || !notes[1].System {
 				t.Fatalf("notes %+v %v", notes, err)
+			}
+			if notes, _, _ := ts.Notes(fixture.WebsiteID, "Issue", is.ID, 100, true); len(notes) != 3 || !notes[2].Internal {
+				t.Fatalf("notes with internal ones %+v", notes)
+			}
+			if _, n, _ := ts.Issues(fixture.WebsiteID, tracker.Query{State: "opened", HideConfidential: true}); n != 1 {
+				t.Fatalf("open issues without confidential ones: %d", n)
+			}
+			if w := ix.Project("acme/website"); w.ConfidentialIssues != 1 || w.OpenConfidentialIssues != 1 || w.OpenIssues != 2 {
+				t.Fatalf("confidential counts %+v", w)
 			}
 			mr, err := ts.MergeRequest(fixture.WebsiteID, 1)
 			if err != nil || mr.HeadSHA != res.MRHead || mr.BaseSHA != res.MRBase || mr.Source != "feature/dark-mode" {

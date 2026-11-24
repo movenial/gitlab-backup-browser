@@ -23,7 +23,7 @@ directory.
 |---|---|---|
 | `--listen ADDR` | `127.0.0.1:8080` | `:8080` to allow other devices |
 | `--backups DIR` | see below | directory where the Backups page looks for archives (repeatable) |
-| `--auth user:password` | none | require a login (or `GBB_AUTH`) |
+| `--auth user:password` | none | require a login (or `GBB_AUTH`); confidential issues and internal comments are shown only with it |
 | `--host NAME` | none | host name the server is reached by, besides IP addresses and `localhost` (repeatable; not needed with `--auth`) |
 | `--no-issues` | off | skip issues, merge requests and comments |
 | `--lfs`, `--lfs=head` | off | extract `lfs.tar.gz` once to show Git LFS files and serve them to git-lfs: all objects (about the archive's size on disk), or with `head` only the files of each project's default branch |
@@ -58,6 +58,15 @@ They are protected by the same login as the rest of the site (`--auth`), and
 use a per-process token plus an origin check against cross-site requests.
 When gbb listens on the network **without** `--auth`, the buttons are
 disabled: anyone on the network can browse, nobody can change anything.
+
+### Confidential issues
+
+Without `--auth`, gbb leaves out confidential issues and internal comments:
+they are not listed, not counted, and their pages answer `404`. The issue
+list says how many are hidden. Start gbb with `--auth` to see them. Their
+attachments (with `--uploads`) are still served to anyone who has the link,
+as GitLab's random path in each link is the only key, and that link is only
+on the hidden page.
 
 ### Host names
 

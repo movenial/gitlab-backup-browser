@@ -38,6 +38,6 @@ func FuzzStore(f *testing.F) {
 		s.MergeRequests(1, q)
 		s.Issue(1, 1)
 		s.MergeRequest(1, 1)
-		s.Notes(1, "Issue", 1, 10)
+		s.Notes(1, "Issue", 1, 10, false)
 	})
 }

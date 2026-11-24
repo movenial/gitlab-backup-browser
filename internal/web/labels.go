@@ -99,7 +99,7 @@ func (s *Server) labelsPage(w http.ResponseWriter, r *http.Request, t *target) {
 		s.noTracker(w, r, t)
 		return
 	}
-	use, err := ts.LabelUsage(t.P.ID)
+	use, err := ts.LabelUsage(t.P.ID, !s.ShowConfidential)
 	if err != nil {
 		s.errorPage(w, r, http.StatusInternalServerError, err.Error())
 		return
@@ -143,7 +143,7 @@ func (s *Server) milestonesPage(w http.ResponseWriter, r *http.Request, t *targe
 		s.noTracker(w, r, t)
 		return
 	}
-	use, err := ts.MilestoneUsage(t.P.ID)
+	use, err := ts.MilestoneUsage(t.P.ID, !s.ShowConfidential)
 	if err != nil {
 		s.errorPage(w, r, http.StatusInternalServerError, err.Error())
 		return

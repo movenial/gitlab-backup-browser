@@ -130,9 +130,11 @@ type User struct {
 	Name     string `json:"name"`
 }
 
-// Counts summarises one project.
+// Counts summarises one project. Confidential issues are counted in
+// Issues and OpenIssues too.
 type Counts struct {
 	Issues, OpenIssues, MRs, OpenMRs, Releases int
+	ConfidentialIssues, OpenConfidentialIssues int
 }
 
 // IssueState maps issues.state_id.
@@ -353,6 +355,12 @@ func (w *Writer) AddIssue(pid int64, is *Issue) {
 	c.Issues++
 	if is.State == "opened" {
 		c.OpenIssues++
+	}
+	if is.Confidential {
+		c.ConfidentialIssues++
+		if is.State == "opened" {
+			c.OpenConfidentialIssues++
+		}
 	}
 	w.issueOwner[is.ID] = mrRef{pid, is.IID}
 	w.append(pid, "issues", is)
@@ -651,6 +659,9 @@ type Query struct {
 	Milestone string // milestone title; "none" = without milestone
 	Offset    int
 	Limit     int
+	// HideConfidential leaves confidential issues out of the list and the
+	// total.
+	HideConfidential bool
 }
 
 func (q Query) match(state, title, desc string) bool {
@@ -729,6 +740,7 @@ func (s *Store) MilestoneOf(id int64) *Milestone {
 // item is what lists need from an issue or a merge request.
 type item interface {
 	head() (iid int64, state, title, desc string, milestone int64)
+	confidential() bool
 	setLabels([]int64)
 	dropDescription()
 }
@@ -736,12 +748,14 @@ type item interface {
 func (is *Issue) head() (int64, string, string, string, int64) {
 	return is.IID, is.State, is.Title, is.Description, is.Milestone
 }
+func (is *Issue) confidential() bool  { return is.Confidential }
 func (is *Issue) setLabels(l []int64) { is.Labels = l }
 func (is *Issue) dropDescription()    { is.Description = "" }
 
 func (mr *MergeRequest) head() (int64, string, string, string, int64) {
 	return mr.IID, mr.State, mr.Title, mr.Description, mr.Milestone
 }
+func (mr *MergeRequest) confidential() bool  { return false }
 func (mr *MergeRequest) setLabels(l []int64) { mr.Labels = l }
 func (mr *MergeRequest) dropDescription()    { mr.Description = "" }
 
@@ -778,6 +792,9 @@ func list[T any, P interface {
 	var iids []int64
 	err = eachItem[T, P](s, pid, kind, func(v P) error {
 		iid, state, title, desc, ms := v.head()
+		if q.HideConfidential && v.confidential() {
+			return nil
+		}
 		if q.match(state, title, desc) && s.matchMeta(q, labels[key(iid)], ms) {
 			iids = append(iids, iid)
 		}
@@ -875,8 +892,9 @@ func pageOf(iids []int64, q Query) map[int64]struct{} {
 }
 
 // Notes returns the notes on one issue or MR (by its database id), oldest
-// first. At most limit notes are returned.
-func (s *Store) Notes(pid int64, typ string, target int64, limit int) ([]*Note, bool, error) {
+// first. At most limit notes are returned. Internal notes are left out
+// unless internal is set.
+func (s *Store) Notes(pid int64, typ string, target int64, limit int, internal bool) ([]*Note, bool, error) {
 	var out []*Note
 	more := false
 	needle := []byte(`"target":` + key(target) + `,`)
@@ -888,7 +906,7 @@ func (s *Store) Notes(pid int64, typ string, target int64, limit int) ([]*Note, 
 		if err := json.Unmarshal(line, &n); err != nil {
 			return err
 		}
-		if n.Type == typ && n.Target == target {
+		if n.Type == typ && n.Target == target && (internal || !n.Internal) {
 			if len(out) == limit {
 				more = true
 				return nil
@@ -911,18 +929,23 @@ type Usage struct {
 }
 
 // usage scans a project's issues and MRs, calling keys for each record
-// to know which ids (labels or milestone) it counts towards.
-func (s *Store) usage(pid int64, keys func(kind string, iid, milestone int64) []int64) (map[int64]*Usage, error) {
+// to know which ids (labels or milestone) it counts towards. Confidential
+// issues are skipped when hideConfidential is set.
+func (s *Store) usage(pid int64, hideConfidential bool, keys func(kind string, iid, milestone int64) []int64) (map[int64]*Usage, error) {
 	out := map[int64]*Usage{}
 	for _, kind := range []string{"issues", "merge_requests"} {
 		err := s.each(pid, kind, func(line []byte) error {
 			var r struct {
-				IID       int64  `json:"iid"`
-				State     string `json:"state"`
-				Milestone int64  `json:"milestone"`
+				IID          int64  `json:"iid"`
+				State        string `json:"state"`
+				Milestone    int64  `json:"milestone"`
+				Confidential bool   `json:"confidential"`
 			}
 			if err := json.Unmarshal(line, &r); err != nil {
 				return err
+			}
+			if hideConfidential && r.Confidential {
+				return nil
 			}
 			for _, id := range keys(kind, r.IID, r.Milestone) {
 				u := out[id]
@@ -955,16 +978,16 @@ func (s *Store) usage(pid int64, keys func(kind string, iid, milestone int64) []
 }
 
 // LabelUsage counts the issues and MRs of a project per label id.
-func (s *Store) LabelUsage(pid int64) (map[int64]*Usage, error) {
+func (s *Store) LabelUsage(pid int64, hideConfidential bool) (map[int64]*Usage, error) {
 	pl := s.projectLabels(pid)
-	return s.usage(pid, func(kind string, iid, _ int64) []int64 {
+	return s.usage(pid, hideConfidential, func(kind string, iid, _ int64) []int64 {
 		return pl.of(kind)[key(iid)]
 	})
 }
 
 // MilestoneUsage counts the issues and MRs of a project per milestone id.
-func (s *Store) MilestoneUsage(pid int64) (map[int64]*Usage, error) {
-	return s.usage(pid, func(_ string, _, milestone int64) []int64 {
+func (s *Store) MilestoneUsage(pid int64, hideConfidential bool) (map[int64]*Usage, error) {
+	return s.usage(pid, hideConfidential, func(_ string, _, milestone int64) []int64 {
 		if milestone == 0 {
 			return nil
 		}

@@ -26,7 +26,16 @@ func setup(t *testing.T) (*httptest.Server, *fixture.Result, *app.Manager) {
 	return setupWith(t, nil)
 }
 
+// setupWith serves the test backup as a logged-in user sees it
+// (confidential issues shown).
 func setupWith(t *testing.T, tweak func(*app.Config)) (*httptest.Server, *fixture.Result, *app.Manager) {
+	t.Helper()
+	ts, s, res, m := setupServer(t, tweak)
+	s.ShowConfidential = true
+	return ts, res, m
+}
+
+func setupServer(t *testing.T, tweak func(*app.Config)) (*httptest.Server, *Server, *fixture.Result, *app.Manager) {
 	t.Helper()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not installed")
@@ -50,7 +59,37 @@ func setupWith(t *testing.T, tweak func(*app.Config)) (*httptest.Server, *fixtur
 	}
 	ts := httptest.NewServer(s)
 	t.Cleanup(ts.Close)
-	return ts, res, m
+	return ts, s, res, m
+}
+
+// TestConfidentialNeedsLogin: without a login (the default), confidential
+// issues and internal comments are neither shown nor counted.
+func TestConfidentialNeedsLogin(t *testing.T) {
+	ts, _, _, _ := setupServer(t, nil)
+	body := expect(t, ts, "/acme/website/-/issues?state=all", 200, "Logo is blurry on retina", "1 confidential issue is not shown", "--auth")
+	if strings.Contains(body, "Security contact") || strings.Contains(body, ">confidential<") {
+		t.Fatal("confidential issue listed without a login")
+	}
+	if !strings.Contains(body, `>Issues <span class="count">1</span>`) {
+		t.Fatal("open issue count includes the confidential issue")
+	}
+	if _, body, _ = get(t, ts.URL+"/acme/website/-/issues?state=all&q=internal"); strings.Contains(body, "Security contact") {
+		t.Fatal("confidential issue found by search")
+	}
+	body = expect(t, ts, "/acme/website/-/issues/3", 404, "This issue is confidential", "--auth")
+	if strings.Contains(body, "internal only") || strings.Contains(body, "Security contact") {
+		t.Fatal("confidential issue content shown")
+	}
+	body = expect(t, ts, "/acme/website/-/issues/1", 200, "<strong>Safari</strong>", "Activity (2)")
+	if strings.Contains(body, "the <strong>team</strong> sees") {
+		t.Fatal("internal comment shown without a login")
+	}
+	if _, body, _ = get(t, ts.URL+"/acme/website/-/milestones?state=all"); !strings.Contains(body, "issues closed") {
+		t.Fatalf("milestones page: %s", body)
+	}
+	if _, body, _ = get(t, ts.URL+"/-/projects?sort=issues"); !strings.Contains(body, "acme/website") {
+		t.Fatal("projects sorted by issues")
+	}
 }
 
 func get(t *testing.T, url string) (int, string, http.Header) {
@@ -224,13 +263,18 @@ func TestBrowse(t *testing.T) {
 	expect(t, ts, "/acme/website", 200, `/-/code?p=acme%2fwebsite`)
 
 	// Issues and merge requests (no repository needed for lists).
-	expect(t, ts, "/acme/website/-/issues", 200, "Logo is blurry on retina", "Security contact", "confidential", "Zoé M.")
+	body = expect(t, ts, "/acme/website/-/issues", 200, "Logo is blurry on retina", "Security contact", "confidential", "Zoé M.", `>Issues <span class="count">2</span>`)
+	if strings.Contains(body, "not shown") {
+		t.Fatal("hidden-issues notice shown to a logged-in user")
+	}
 	body = expect(t, ts, "/acme/website/-/issues?state=closed", 200, "Typo in footer")
 	if strings.Contains(body, "Logo is blurry") {
 		t.Fatal("closed filter shows open issues")
 	}
 	expect(t, ts, "/acme/website/-/issues?state=all&q=retina", 200, "Logo is blurry")
-	body = expect(t, ts, "/acme/website/-/issues/1", 200, "<strong>logo</strong>", "<strong>Safari</strong>", "changed the description", "Ada Lovelace")
+	body = expect(t, ts, "/acme/website/-/issues/1", 200, "<strong>logo</strong>", "<strong>Safari</strong>", "changed the description", "Ada Lovelace",
+		"Only the <strong>team</strong> sees this.", ">internal</span>", "Activity (3)")
+	expect(t, ts, "/acme/website/-/issues/3", 200, "Security contact", "internal only")
 	if strings.Contains(body, "A note on another target") {
 		t.Fatal("note of another issue shown")
 	}

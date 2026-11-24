@@ -184,6 +184,8 @@ the current directory) and opens the one you pick.`)
 	// Buttons that change things (open a backup, extract, delete caches)
 	// need a login once the server is reachable from the network.
 	srv.ActionsAllowed = *auth != "" || addr.IP.IsLoopback()
+	// Confidential issues and internal comments only behind a login.
+	srv.ShowConfidential = *auth != ""
 	// Without a login, only known host names are served (DNS rebinding);
 	// with one, a page under another name has no credentials to send.
 	handler := web.AllowHosts(srv, hosts)

@@ -13,6 +13,7 @@
   <span class="grow"></span>
   <a href="/{{.T.Base}}/-/labels">Labels</a> · <a href="/{{.T.Base}}/-/milestones">Milestones</a>
 </div>
+{{with .HiddenConfidential}}<div class="notice">{{.}} confidential issue{{if ne . 1}}s are{{else}} is{{end}} not shown: gbb shows them only when it is started with a login (<code>--auth</code>).</div>{{end}}
 <ul class="list">
 {{if eq .Kind "issues"}}
   {{range .Issues}}

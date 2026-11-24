@@ -91,6 +91,7 @@ gbb demo /tmp/sample   # no backup at hand? two small sample backups (needs git)
 - Issues and merge requests, read-only, with comments, attachments, labels
   (scoped labels too) and milestones, filterable by label and milestone, and
   each merge request's changes; Labels and Milestones pages per project.
+  Confidential issues and internal comments only behind a login (`--auth`).
 - Releases with their notes and asset links (attachments served from the
   backup, source code as `.zip` of the tag).
 - Diffs of commits and merge requests with syntax highlighting.

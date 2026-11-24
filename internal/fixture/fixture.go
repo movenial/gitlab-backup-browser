@@ -578,6 +578,7 @@ COPY public.notes (id, note, noteable_type, author_id, created_at, updated_at, p
 1001	changed the description	Issue	1	2024-09-01 12:00:00	2024-09-01 12:00:00	1	\N	10	t	f
 1002	Looks good, merging soon.	MergeRequest	1	2024-09-08 11:00:00	2024-09-08 11:00:00	1	\N	50	f	f
 1003	A note on another target	Issue	1	2024-09-08 11:00:00	2024-09-08 11:00:00	1	\N	100	f	f
+1004	Only the **team** sees this.	Issue	1	2024-09-01 13:00:00	2024-09-01 13:00:00	1	\N	10	f	t
 \.
 
 --

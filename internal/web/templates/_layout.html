@@ -182,7 +182,7 @@
 <nav class="tabs">
   <a class="{{if eq .Active "code"}}on{{end}}" href="/{{$t.Base}}">Code</a>
   {{if and (not $t.IsWiki) hasTracker}}
-  <a class="{{if eq .Active "issues"}}on{{end}}" href="/{{$t.Base}}/-/issues">Issues <span class="count">{{$t.P.OpenIssues}}</span></a>
+  <a class="{{if eq .Active "issues"}}on{{end}}" href="/{{$t.Base}}/-/issues">Issues <span class="count">{{openIssues $t.P}}</span></a>
   <a class="{{if eq .Active "merge_requests"}}on{{end}}" href="/{{$t.Base}}/-/merge_requests">Merge requests <span class="count">{{$t.P.OpenMRs}}</span></a>
   {{if $t.P.Releases}}<a class="{{if eq .Active "releases"}}on{{end}}" href="/{{$t.Base}}/-/releases">Releases <span class="count">{{$t.P.Releases}}</span></a>{{end}}
   {{end}}

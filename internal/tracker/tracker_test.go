@@ -46,7 +46,7 @@ func testWriter(t *testing.T, async bool) {
 		t.Fatal(err)
 	}
 	for pid := int64(1); pid <= projects; pid++ {
-		notes, _, err := s.Notes(pid, "Issue", 7, 10000)
+		notes, _, err := s.Notes(pid, "Issue", 7, 10000, true)
 		if err != nil || len(notes) != perProject {
 			t.Fatalf("project %d: %d notes, %v", pid, len(notes), err)
 		}
@@ -56,7 +56,7 @@ func testWriter(t *testing.T, async bool) {
 			}
 		}
 	}
-	if n, _, _ := s.Notes(1, "Issue", 7, 1); n[0].Body != "<b>note 0</b> & more" {
+	if n, _, _ := s.Notes(1, "Issue", 7, 1, true); n[0].Body != "<b>note 0</b> & more" {
 		t.Fatalf("body %q", n[0].Body)
 	}
 	mr, err := s.MergeRequest(3, 1)
