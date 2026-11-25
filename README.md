@@ -19,7 +19,7 @@ an old Android phone. The same binary checks your nightly backups.
 ![A project of the sample backup in gbb](screenshots/project.png)
 
 More: [projects page](screenshots/projects.png),
-[merge request](screenshots/merge-request.png).
+[issue](screenshots/issue.png), [merge request](screenshots/merge-request.png).
 
 ## Why
 

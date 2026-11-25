@@ -8,6 +8,7 @@
   Searches and filters leave confidential issues out. Existing caches are
   re-indexed once.
 - `gbb demo` works with a relative directory (`gbb demo sample`).
+- `gbb demo`: the issue attachment is a real image.
 
 ## v0.1.2 (2026-11-19)
 

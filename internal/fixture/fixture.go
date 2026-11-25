@@ -366,7 +366,7 @@ func build(workdir string, layout Layout, format Format, next bool, era Era) (*R
 // Content used for Git LFS and attachments.
 var (
 	HeroPNG      = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte("hero image bytes "), 300)...)
-	Screenshot   = append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte("screenshot "), 50)...)
+	Screenshot   = blurryLogoPNG()
 	missingLFS   = []byte("this object is not in lfs.tar.gz")
 	OldLFS       = []byte("an LFS object no default branch points to any more")
 	UploadSecret = "0123456789abcdef0123456789abcdef"
@@ -483,14 +483,14 @@ COPY public.lfs_objects (id, oid, size, created_at, updated_at, file, file_store
 \.
 
 COPY public.uploads (id, size, path, checksum, model_id, model_type, uploader, created_at, store, mount_point, secret) FROM stdin;
-1	600	` + UploadSecret + `/screenshot.png	\N	1	Project	FileUploader	2024-09-01	1	\N	` + UploadSecret + `
+1	` + fmt.Sprint(len(Screenshot)) + `	` + UploadSecret + `/screenshot.png	\N	1	Project	FileUploader	2024-09-01	1	\N	` + UploadSecret + `
 2	6	uploads/-/system/user/avatar/1/avatar.png	\N	1	User	AvatarUploader	2024-01-01	\N	avatar	\N
 3	9	uploads/-/system/user/avatar/2/avatar.png	\N	2	User	AvatarUploader	2024-01-01	2	avatar	\N
 4	9	whatever.bin	\N	1	AbuseReport	SomethingUploader	2024-01-01	1	\N	\N
 \.
 
 COPY public.project_uploads (id, size, path, checksum, model_id, uploader, created_at, store, mount_point, secret, project_id) FROM stdin;
-1	600	` + UploadSecret + `/screenshot.png	\N	1	FileUploader	2024-09-01	1	\N	` + UploadSecret + `	1
+1	` + fmt.Sprint(len(Screenshot)) + `	` + UploadSecret + `/screenshot.png	\N	1	FileUploader	2024-09-01	1	\N	` + UploadSecret + `	1
 \.
 
 COPY public.user_uploads (id, size, path, checksum, model_id, model_type, uploader, created_at, store, mount_point, secret, uploaded_by_user_id) FROM stdin;

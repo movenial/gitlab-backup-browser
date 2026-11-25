@@ -91,9 +91,10 @@ h1 em { font-style: normal; color: var(--accent); }
 .shot-tabs .note { margin-left: auto; align-self: center; font-size: .83rem; color: var(--muted); }
 @media (max-width: 720px) {
   .shot-tabs .note { display: none; }
-  .shot-tabs button { padding: 10px; white-space: nowrap; }
+  /* Four tabs: two rows of two on a phone. */
+  .shot-tabs { flex-wrap: wrap; }
+  .shot-tabs button { flex: 1 1 40%; padding: 10px 6px; white-space: nowrap; }
 }
-@media (max-width: 380px) { .shot-tabs button { padding: 10px 6px; white-space: normal; } }
 .frame { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel);
   box-shadow: 0 24px 60px -36px rgba(31,29,24,.5); }
 .frame img { display: block; width: 100%; height: auto; }
@@ -237,12 +238,14 @@ h2 { font-size: clamp(1.7rem, 3vw, 2.3rem); line-height: 1.15; margin: 0 0 16px;
       <div class="shot-tabs" role="tablist" aria-label="Screenshots">
         <button role="tab" aria-selected="true" aria-controls="s-project" id="t-project">Repository</button>
         <button role="tab" aria-selected="false" aria-controls="s-projects" id="t-projects" tabindex="-1">Project list</button>
+        <button role="tab" aria-selected="false" aria-controls="s-issue" id="t-issue" tabindex="-1">Issue</button>
         <button role="tab" aria-selected="false" aria-controls="s-mr" id="t-mr" tabindex="-1">Merge request</button>
         <span class="note">The sample backup from <code>gbb demo</code></span>
       </div>
       <div class="frame">
         <img id="s-project" role="tabpanel" aria-labelledby="t-project" src="screenshots/project.png" width="1280" height="800" alt="A project in gbb: clone URL, branches, file tree and rendered README">
         <img id="s-projects" role="tabpanel" aria-labelledby="t-projects" src="screenshots/projects.png" width="1280" height="800" alt="The Projects page of gbb, with filters and sorting" hidden loading="lazy">
+        <img id="s-issue" role="tabpanel" aria-labelledby="t-issue" src="screenshots/issue.png" width="1280" height="800" alt="An issue in gbb, with labels, milestone, its attachment and comments" hidden loading="lazy">
         <img id="s-mr" role="tabpanel" aria-labelledby="t-mr" src="screenshots/merge-request.png" width="1280" height="800" alt="A merge request in gbb, with its comments" hidden loading="lazy">
       </div>
     </div>
