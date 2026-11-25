@@ -186,6 +186,12 @@ func BuildNext(workdir string, layout Layout, format Format) (*Result, error) {
 }
 
 func build(workdir string, layout Layout, format Format, next bool, era Era) (*Result, error) {
+	// git runs in each repository's own directory: relative paths given to
+	// it would resolve from there.
+	workdir, err := filepath.Abs(workdir)
+	if err != nil {
+		return nil, err
+	}
 	g := &gen{work: filepath.Join(workdir, "work"), stage: filepath.Join(workdir, "stage"), layout: layout, id: backupID}
 	if next {
 		g.id = nextBackupID
